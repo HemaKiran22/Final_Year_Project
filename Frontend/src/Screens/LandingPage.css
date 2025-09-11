@@ -26,6 +26,13 @@ body {
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
   z-index: 1000;
   padding: 1rem 0;
+  transition: all 0.3s ease;
+}
+
+.navbar.scrolled {
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+  padding: 0.7rem 0;
 }
 
 .nav-container {
@@ -66,34 +73,39 @@ body {
   color: #4CAF50;
 }
 
-.cta-button {
-  background: #4CAF50;
-  color: white;
-  border: none;
-  padding: 0.8rem 1.5rem;
+.auth-buttons {
+  display: flex;
+  gap: 0.8rem;
+  margin-left: 1rem;
+}
+
+.auth-button {
+  padding: 0.6rem 1.2rem;
   border-radius: 50px;
   font-weight: bold;
   cursor: pointer;
   transition: all 0.3s;
-}
-
-.cta-button:hover {
-  background: #3e8e41;
-  transform: translateY(-2px);
-}
-
-.cta-button.secondary {
-  background: transparent;
-  color: #4CAF50;
   border: 2px solid #4CAF50;
 }
 
-.cta-button.secondary:hover {
-  background: #f5f5f5;
+.auth-button.login {
+  background: transparent;
+  color: #4CAF50;
 }
 
-.nav-cta {
-  margin-left: 1rem;
+.auth-button.login:hover {
+  background: #4CAF50;
+  color: white;
+}
+
+.auth-button.signup {
+  background: #4CAF50;
+  color: white;
+}
+
+.auth-button.signup:hover {
+  background: #3e8e41;
+  border-color: #3e8e41;
 }
 
 .menu-toggle {
@@ -140,6 +152,32 @@ body {
 .hero-buttons {
   display: flex;
   gap: 1rem;
+}
+
+.cta-button {
+  background: #4CAF50;
+  color: white;
+  border: none;
+  padding: 0.8rem 1.5rem;
+  border-radius: 50px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.cta-button:hover {
+  background: #3e8e41;
+  transform: translateY(-2px);
+}
+
+.cta-button.secondary {
+  background: transparent;
+  color: #4CAF50;
+  border: 2px solid #4CAF50;
+}
+
+.cta-button.secondary:hover {
+  background: #f5f5f5;
 }
 
 .hero-image {
@@ -436,6 +474,13 @@ body {
   margin-right: auto;
 }
 
+.cta-buttons {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
 .cta-button.large {
   padding: 1rem 2.5rem;
   font-size: 1.2rem;
@@ -616,6 +661,11 @@ body {
     margin: 1rem 0;
   }
   
+  .auth-buttons {
+    flex-direction: column;
+    margin: 1rem 0 0;
+  }
+  
   .menu-toggle {
     display: flex;
   }
@@ -663,6 +713,10 @@ body {
   }
   
   .footer-content {
+    flex-direction: column;
+  }
+  
+  .cta-buttons {
     flex-direction: column;
   }
 }

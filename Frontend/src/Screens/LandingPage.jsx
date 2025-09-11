@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import './LandingPage.css';
 
 const LandingPage = () => {
@@ -6,12 +7,23 @@ const LandingPage = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [email, setEmail] = useState('');
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
 
   useEffect(() => {
     const featureInterval = setInterval(() => {
       setActiveFeature((prev) => (prev + 1) % 3);
     }, 5000);
-    return () => clearInterval(featureInterval);
+
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 50);
+    };
+
+    window.addEventListener('scroll', handleScroll);
+
+    return () => {
+      clearInterval(featureInterval);
+      window.removeEventListener('scroll', handleScroll);
+    };
   }, []);
 
   const handleSubmit = (e) => {
@@ -27,7 +39,7 @@ const LandingPage = () => {
   return (
     <div className="landing-page">
       {/* Navigation */}
-      <nav className="navbar">
+      <nav className={`navbar ${isScrolled ? 'scrolled' : ''}`}>
         <div className="nav-container">
           <div className="logo">
             <span className="logo-icon">🚗</span>
@@ -38,7 +50,14 @@ const LandingPage = () => {
             <a href="#how-it-works">How It Works</a>
             <a href="#testimonials">Testimonials</a>
             <a href="#faq">FAQ</a>
-            <button className="cta-button nav-cta">Join Now</button>
+            <div className="auth-buttons">
+              <Link to="/login">
+                <button className="auth-button login">Login</button>
+              </Link>
+              <Link to="/signup">
+                <button className="auth-button signup">Sign Up</button>
+              </Link>
+            </div>
           </div>
           <div className="menu-toggle" onClick={() => setIsMenuOpen(!isMenuOpen)}>
             <span></span>
@@ -241,7 +260,17 @@ const LandingPage = () => {
         <div className="cta-content">
           <h2>Ready to Transform Your Commute?</h2>
           <p>Join thousands of residents already enjoying stress-free, economical, and eco-friendly travel.</p>
-          <button className="cta-button primary large">Download The App</button>
+          <div className="cta-buttons">
+            <button className="cta-button primary large">Download The App</button>
+            <div className="auth-buttons">
+              <Link to="/login">
+                <button className="auth-button login">Login</button>
+              </Link>
+              <Link to="/signup">
+                <button className="auth-button signup">Sign Up</button>
+              </Link>
+            </div>
+          </div>
         </div>
       </section>
 
