@@ -1,8 +1,31 @@
-import React, { useState, useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
+import logo from '../assets/logo.jpg';
 import './LandingPage.css';
 
 const LandingPage = () => {
+  // Animated Counter Hook
+  function useCountUp(end, duration = 2000) {
+    const [count, setCount] = useState(0);
+    const ref = useRef();
+    useEffect(() => {
+      let start = 0;
+      const increment = end / (duration / 16);
+      function update() {
+        start += increment;
+        if (start < end) {
+          setCount(Math.floor(start));
+          ref.current = requestAnimationFrame(update);
+        } else {
+          setCount(end);
+          cancelAnimationFrame(ref.current);
+        }
+      }
+      ref.current = requestAnimationFrame(update);
+      return () => cancelAnimationFrame(ref.current);
+    }, [end, duration]);
+    return count;
+  }
   const [activeFeature, setActiveFeature] = useState(0);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [email, setEmail] = useState('');
@@ -42,7 +65,7 @@ const LandingPage = () => {
       <nav className={`navbar ${isScrolled ? 'scrolled' : ''}`}>
         <div className="nav-container">
           <div className="logo">
-            <span className="logo-icon">🚗</span>
+            <img src={logo} alt="Logo" className="" style={{ height: '60px', width: 'auto' }} />
             <span className="logo-text">ColonyCarpool</span>
           </div>
           <div className={`nav-links ${isMenuOpen ? 'nav-active' : ''}`}>
@@ -73,7 +96,7 @@ const LandingPage = () => {
           <h1>Ride with Trusted Neighbors</h1>
           <p>Connect, commute, and contribute to a greener community with ColonyCarpool - the secure ride-sharing platform exclusively for your housing society.</p>
           <div className="hero-buttons">
-            <button className="cta-button primary">Get Started</button>
+            <button className="css-button-get">Get Started</button>
             <button className="cta-button secondary">Learn More</button>
           </div>
         </div>
@@ -109,19 +132,19 @@ const LandingPage = () => {
       {/* Stats Section */}
       <section className="stats">
         <div className="stat-item">
-          <h3>500+</h3>
+          <h3>{useCountUp(500)}+</h3>
           <p>Communities Served</p>
         </div>
         <div className="stat-item">
-          <h3>12,000+</h3>
+          <h3>{useCountUp(12000).toLocaleString()}+</h3>
           <p>Active Users</p>
         </div>
         <div className="stat-item">
-          <h3>45%</h3>
+          <h3>{useCountUp(45)}%</h3>
           <p>Carbon Reduction</p>
         </div>
         <div className="stat-item">
-          <h3>₹25L+</h3>
+          <h3>₹{useCountUp(25)}L+</h3>
           <p>Collective Savings</p>
         </div>
       </section>

@@ -1,3 +1,4 @@
+/* Logo styles */
 /* LandingPage.css */
 
 /* Reset and base styles */
@@ -44,17 +45,7 @@ body {
   padding: 0 2rem;
 }
 
-.logo {
-  display: flex;
-  align-items: center;
-  font-weight: bold;
-  font-size: 1.5rem;
-}
 
-.logo-icon {
-  margin-right: 0.5rem;
-  font-size: 1.8rem;
-}
 
 .nav-links {
   display: flex;
@@ -73,6 +64,18 @@ body {
   color: #4CAF50;
 }
 
+.logo-icon {
+    display: flex
+;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    background: linear-gradient(135deg, #f0f0f3 0%, rgba(248, 246, 246, 0.2) 100%); 
+    border-radius: 12px;
+    color: white;
+    padding: 0.5rem;
+}
 .auth-buttons {
   display: flex;
   gap: 0.8rem;
@@ -153,7 +156,16 @@ body {
   display: flex;
   gap: 1rem;
 }
-
+.css-button-get {
+  background: #0fd619;
+  color: white;
+  border: none;
+  padding: 0.8rem 1.5rem;
+  border-radius: 50px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s;
+}
 .cta-button {
   background: #4CAF50;
   color: white;
