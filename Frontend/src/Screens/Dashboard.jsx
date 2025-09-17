@@ -1,35 +1,37 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { auth, db } from '../firebase';
 import { signOut } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
-import { 
-  FiHome, 
-  FiCalendar, 
-  FiUsers, 
-  FiUser,
-  FiLogOut,
-  FiSearch,
-  FiPlusCircle,
-  FiBriefcase,
-  FiMessageSquare,
+import { useEffect, useState } from 'react';
+import { FaLeaf } from 'react-icons/fa'; // FiLeaf is not available, using FaLeaf instead
+import {
+  FiArrowUpRight,
   FiAward,
-  FiTrendingUp,
-  FiDollarSign,
-  FiStar,
-  FiMap,
+  FiBriefcase,
+  FiCalendar,
   FiClock,
+  FiDollarSign,
+  FiHome,
+  FiLogOut,
+  FiMap,
+  FiMessageSquare,
+  FiPlusCircle,
+  FiSearch,
   FiShare2,
-  FiArrowUpRight
+  FiStar,
+  FiTrendingUp,
+  FiUser,
+  FiUsers
 } from 'react-icons/fi';
 import { WiDaySunny } from 'react-icons/wi';
-import { FaLeaf } from 'react-icons/fa'; // FiLeaf is not available, using FaLeaf instead
+import { useNavigate } from 'react-router-dom';
+import { auth, db } from '../firebase';
 import './Dashboard.css';
+import FindRideModal from './FindRideModal';
 
 const Dashboard = () => {
   const [user, setUser] = useState(null);
   const [activeTab, setActiveTab] = useState('overview');
   const [isLoading, setIsLoading] = useState(true);
+  const [isFindRideOpen, setIsFindRideOpen] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -220,7 +222,12 @@ const Dashboard = () => {
           <h2>Quick Actions</h2>
           <div className="actions-grid">
             {quickActions.map(action => (
-              <button key={action.id} className="action-card" style={{ '--action-color': action.color }}>
+              <button
+                key={action.id}
+                className="action-card"
+                style={{ '--action-color': action.color }}
+                onClick={action.id === 'find-ride' ? () => setIsFindRideOpen(true) : undefined}
+              >
                 <div className="action-icon" style={{ color: action.color }}>
                   {action.icon}
                 </div>
@@ -323,6 +330,12 @@ const Dashboard = () => {
           </div>
         </section>
       </main>
+      {/* Find Ride Modal */}
+      <FindRideModal
+        isOpen={isFindRideOpen}
+        onClose={() => setIsFindRideOpen(false)}
+        community={user?.community || ''}
+      />
     </div>
   );
 };
