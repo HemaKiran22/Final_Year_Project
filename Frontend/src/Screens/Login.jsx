@@ -4,6 +4,7 @@ import { signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 import './Login.css';
+import logo from '../assets/logo.png';
 
 const Login = () => {
   const [loginData, setLoginData] = useState({ email: '', password: '' });
@@ -54,34 +55,68 @@ const Login = () => {
   };
 
   return (
-    <div className="auth-container">
-      <div className="auth-form">
-        <h2>Login to Your Account</h2>
-        <form onSubmit={handleSubmit}>
-          <input 
-            type="email" 
-            name="email" 
-            placeholder="Email Address" 
-            value={loginData.email} 
-            onChange={handleChange} 
-            required 
-          />
-          <input 
-            type="password" 
-            name="password" 
-            placeholder="Password" 
-            value={loginData.password} 
-            onChange={handleChange} 
-            required 
-          />
-          <button type="submit" disabled={isLoading}>
-            {isLoading ? 'Logging in...' : 'Login'}
+    <div className="auth-container login-page">
+      <div className="auth-background">
+        <div className="shape shape-1"></div>
+        <div className="shape shape-2"></div>
+        <div className="shape shape-3"></div>
+        <div className="shape shape-4"></div>
+      </div>
+      
+      <div className="auth-card">
+        <div className="card-header">
+          
+          <div className="logo">
+            <img src={logo} alt="Logo" className="" style={{ height: '60px', width: 'auto' }} />
+            <span className="logo-text">ColonyCarpool</span>
+          </div>
+          <h2>Welcome Back</h2>
+          <p>Sign in to your account</p>
+        </div>
+        
+        <form onSubmit={handleSubmit} className="auth-form">
+          <div className="input-group">
+            <input 
+              type="email" 
+              name="email" 
+              value={loginData.email} 
+              onChange={handleChange} 
+              required 
+            />
+            <label>Email Address</label>
+            <span className="input-border"></span>
+          </div>
+          
+          <div className="input-group">
+            <input 
+              type="password" 
+              name="password" 
+              value={loginData.password} 
+              onChange={handleChange} 
+              required 
+            />
+            <label>Password</label>
+            <span className="input-border"></span>
+          </div>
+          
+          <button type="submit" disabled={isLoading} className="auth-button">
+            {isLoading ? (
+              <div className="button-loader"></div>
+            ) : (
+              'Login to Account'
+            )}
           </button>
         </form>
-        {message && <p className={message.includes('Error') ? 'message error' : 'message success'}>{message}</p>}
-        <p className="auth-link">
-          Don't have an account? <Link to="/signup">Sign up here</Link>.
-        </p>
+        
+        {message && (
+          <div className={`message ${message.includes('Error') ? 'error' : 'success'}`}>
+            {message}
+          </div>
+        )}
+        
+        <div className="auth-footer">
+          <p>Don't have an account? <Link to="/signup" className="auth-link">Sign up here</Link></p>
+        </div>
       </div>
     </div>
   );

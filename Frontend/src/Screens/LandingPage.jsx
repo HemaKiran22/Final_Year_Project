@@ -1,7 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import logo from '../assets/logo.jpg';
+import logo from '../assets/logo.png';
 import './LandingPage.css';
+import { FaLock, FaLeaf } from "react-icons/fa";
+import { MdAttachMoney } from "react-icons/md";
+import { motion } from "framer-motion";
+import { FaShieldAlt,  FaWallet, FaQuoteLeft } from "react-icons/fa";
+import { FaGooglePlay, FaAppStoreIos, FaArrowRight } from "react-icons/fa";
+import { FaFacebook, FaTwitter, FaLinkedin, FaInstagram } from "react-icons/fa";
+
 
 const LandingPage = () => {
   // Animated Counter Hook
@@ -149,64 +156,89 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {/* Features Section */}
-      <section id="features" className="features">
-        <h2>Why Choose ColonyCarpool?</h2>
-        <div className="features-container">
-          <div className="feature-tabs">
-            <div className={`feature-tab ${activeFeature === 0 ? 'active' : ''}`} onClick={() => setActiveFeature(0)}>
-              <span className="feature-icon">🔒</span>
-              <span>Verified Community</span>
-            </div>
-            <div className={`feature-tab ${activeFeature === 1 ? 'active' : ''}`} onClick={() => setActiveFeature(1)}>
-              <span className="feature-icon">💰</span>
-              <span>Cost Saving</span>
-            </div>
-            <div className={`feature-tab ${activeFeature === 2 ? 'active' : ''}`} onClick={() => setActiveFeature(2)}>
-              <span className="feature-icon">🌱</span>
-              <span>Eco Friendly</span>
-            </div>
-          </div>
-          <div className="feature-content">
-            {activeFeature === 0 && (
-              <div className="feature-detail">
-                <h3>Ride with Confidence</h3>
-                <p>All users are verified residents of your housing society. Our secure platform ensures you only share rides with trusted neighbors, eliminating safety concerns associated with public ride-sharing.</p>
-                <ul>
-                  <li>Resident verification system</li>
-                  <li>Profile ratings and reviews</li>
-                  <li>Emergency contact integration</li>
-                  <li>Real-time ride tracking</li>
-                </ul>
-              </div>
-            )}
-            {activeFeature === 1 && (
-              <div className="feature-detail">
-                <h3>Save Money Together</h3>
-                <p>Split commuting costs with fellow residents and reduce your transportation expenses by up to 70%. No surge pricing, no hidden fees - just fair cost sharing among neighbors.</p>
-                <ul>
-                  <li>Flexible cost-sharing options</li>
-                  <li>Monthly commute packages</li>
-                  <li>No platform commission fees</li>
-                  <li>In-app secure payments</li>
-                </ul>
-              </div>
-            )}
-            {activeFeature === 2 && (
-              <div className="feature-detail">
-                <h3>Reduce Your Carbon Footprint</h3>
-                <p>By sharing rides, you're actively reducing traffic congestion and emissions. Join our green initiative to create a more sustainable community and track your environmental impact.</p>
-                <ul>
-                  <li>CO2 savings tracker</li>
-                  <li>Green leaderboards</li>
-                  <li>Carbon offset initiatives</li>
-                  <li>Eco-friendly route optimization</li>
-                </ul>
-              </div>
-            )}
-          </div>
+     
+
+
+
+<section id="features" className="features">
+  <h2>Why Choose ColonyCarpool?</h2>
+  <div className="features-container">
+    <div className="feature-tabs">
+      <div
+        className={`feature-tab ${activeFeature === 0 ? 'active' : ''}`}
+        onClick={() => setActiveFeature(0)}
+      >
+        <span className="feature-icon"><FaLock /></span>
+        <span>Verified Community</span>
+      </div>
+      <div
+        className={`feature-tab ${activeFeature === 1 ? 'active' : ''}`}
+        onClick={() => setActiveFeature(1)}
+      >
+        <span className="feature-icon"><MdAttachMoney /></span>
+        <span>Cost Saving</span>
+      </div>
+      <div
+        className={`feature-tab ${activeFeature === 2 ? 'active' : ''}`}
+        onClick={() => setActiveFeature(2)}
+      >
+        <span className="feature-icon"><FaLeaf /></span>
+        <span>Eco Friendly</span>
+      </div>
+    </div>
+    <div className="feature-content">
+      {activeFeature === 0 && (
+        <div className="feature-detail">
+          <h3>Ride with Confidence</h3>
+          <p>
+            All users are verified residents of your housing society. Our secure
+            platform ensures you only share rides with trusted neighbors,
+            eliminating safety concerns associated with public ride-sharing.
+          </p>
+          <ul>
+            <li>Resident verification system</li>
+            <li>Profile ratings and reviews</li>
+            <li>Emergency contact integration</li>
+            <li>Real-time ride tracking</li>
+          </ul>
         </div>
-      </section>
+      )}
+      {activeFeature === 1 && (
+        <div className="feature-detail">
+          <h3>Save Money Together</h3>
+          <p>
+            Split commuting costs with fellow residents and reduce your
+            transportation expenses by up to 70%. No surge pricing, no hidden
+            fees - just fair cost sharing among neighbors.
+          </p>
+          <ul>
+            <li>Flexible cost-sharing options</li>
+            <li>Monthly commute packages</li>
+            <li>No platform commission fees</li>
+            <li>In-app secure payments</li>
+          </ul>
+        </div>
+      )}
+      {activeFeature === 2 && (
+        <div className="feature-detail">
+          <h3>Reduce Your Carbon Footprint</h3>
+          <p>
+            By sharing rides, you're actively reducing traffic congestion and
+            emissions. Join our green initiative to create a more sustainable
+            community and track your environmental impact.
+          </p>
+          <ul>
+            <li>CO2 savings tracker</li>
+            <li>Green leaderboards</li>
+            <li>Carbon offset initiatives</li>
+            <li>Eco-friendly route optimization</li>
+          </ul>
+        </div>
+      )}
+    </div>
+  </div>
+</section>
+
 
       {/* How It Works */}
       <section id="how-it-works" className="how-it-works">
@@ -235,67 +267,127 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {/* Testimonials */}
       <section id="testimonials" className="testimonials">
-        <h2>What Our Users Say</h2>
-        <div className="testimonial-cards">
-          <div className="testimonial-card">
-            <div className="testimonial-content">
-              <p>"ColonyCarpool has transformed my daily commute. I've not only saved money but also made new friends in my apartment complex!"</p>
-            </div>
-            <div className="testimonial-author">
-              <div className="author-avatar">👩</div>
-              <div className="author-details">
-                <h4>Priya S.</h4>
-                <p>Green Valley Apartments</p>
-              </div>
-            </div>
-          </div>
-          <div className="testimonial-card">
-            <div className="testimonial-content">
-              <p>"As someone who's environmentally conscious, I love how I can track my carbon footprint reduction. The app is intuitive and secure."</p>
-            </div>
-            <div className="testimonial-author">
-              <div className="author-avatar">👨</div>
-              <div className="author-details">
-                <h4>Rahul M.</h4>
-                <p>Sunrise Residency</p>
-              </div>
-            </div>
-          </div>
-          <div className="testimonial-card">
-            <div className="testimonial-content">
-              <p>"The verification process gave me peace of mind. Now my kids can carpool to college with trusted neighbors safely."</p>
-            </div>
-            <div className="testimonial-author">
-              <div className="author-avatar">👵</div>
-              <div className="author-details">
-                <h4>Meena K.</h4>
-                <p>Prestige Enclave</p>
-              </div>
-            </div>
+  <h2>What Our Users Say</h2>
+  <div className="testimonial-cards">
+    {[
+      {
+        text: "ColonyCarpool has transformed my daily commute. I've not only saved money but also made new friends in my apartment complex!",
+        author: "Priya S.",
+        society: "Green Valley Apartments",
+        avatar: "👩"
+      },
+      {
+        text: "As someone who's environmentally conscious, I love how I can track my carbon footprint reduction. The app is intuitive and secure.",
+        author: "Rahul M.",
+        society: "Sunrise Residency",
+        avatar: "👨"
+      },
+      {
+        text: "The verification process gave me peace of mind. Now my kids can carpool to college with trusted neighbors safely.",
+        author: "Meena K.",
+        society: "Prestige Enclave",
+        avatar: "👵"
+      }
+    ].map((testimonial, index) => (
+      <motion.div
+        key={index}
+        className="testimonial-card"
+        initial={{ opacity: 0, y: 50 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6, delay: index * 0.3 }}
+        whileHover={{ scale: 1.05, rotate: -1 }}
+      >
+        <div className="testimonial-content">
+          <FaQuoteLeft className="quote-icon" size={24} />
+          <p>{testimonial.text}</p>
+        </div>
+        <div className="testimonial-author">
+          <motion.div
+            className="author-avatar"
+            whileHover={{ rotate: 360 }}
+            transition={{ duration: 0.8 }}
+          >
+            {testimonial.avatar}
+          </motion.div>
+          <div className="author-details">
+            <h4>{testimonial.author}</h4>
+            <p>{testimonial.society}</p>
           </div>
         </div>
-      </section>
+      </motion.div>
+    ))}
+  </div>
+</section>
 
-      {/* CTA Section */}
+     
+
       <section className="cta-section">
-        <div className="cta-content">
-          <h2>Ready to Transform Your Commute?</h2>
-          <p>Join thousands of residents already enjoying stress-free, economical, and eco-friendly travel.</p>
-          <div className="cta-buttons">
-            <button className="cta-button primary large">Download The App</button>
-            <div className="auth-buttons">
-              <Link to="/login">
-                <button className="auth-button login">Login</button>
-              </Link>
-              <Link to="/signup">
-                <button className="auth-button signup">Sign Up</button>
-              </Link>
-            </div>
-          </div>
-        </div>
-      </section>
+  <motion.div
+    className="cta-content"
+    initial={{ opacity: 0, y: 50 }}
+    whileInView={{ opacity: 1, y: 0 }}
+    transition={{ duration: 0.8 }}
+  >
+    <motion.h2
+      className="cta-title"
+      initial={{ scale: 0.8 }}
+      animate={{ scale: 1 }}
+      transition={{ duration: 0.6, type: "spring" }}
+    >
+      Ready to Transform Your Commute?
+    </motion.h2>
+    <motion.p
+      className="cta-subtitle"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ delay: 0.5, duration: 0.8 }}
+    >
+      Join thousands of residents already enjoying stress-free, economical, and eco-friendly travel.
+    </motion.p>
+
+    <div className="cta-buttons">
+      {/* Download Buttons */}
+      <motion.a
+        href="#"
+        className="cta-download-btn google"
+        whileHover={{ scale: 1.1, boxShadow: "0px 0px 20px #34d399" }}
+        whileTap={{ scale: 0.95 }}
+      >
+        <FaGooglePlay size={22} />
+        <span>Google Play</span>
+      </motion.a>
+
+      <motion.a
+        href="#"
+        className="cta-download-btn apple"
+        whileHover={{ scale: 1.1, boxShadow: "0px 0px 20px #60a5fa" }}
+        whileTap={{ scale: 0.95 }}
+      >
+        <FaAppStoreIos size={22} />
+        <span>App Store</span>
+      </motion.a>
+    </div>
+
+    {/* Secondary CTA */}
+    <motion.div
+      className="cta-secondary"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ delay: 1 }}
+    >
+      <p>Already a member?</p>
+      <motion.a
+        href="/login"
+        className="cta-login-btn"
+        whileHover={{ x: 5 }}
+      >
+        Login <FaArrowRight className="inline-icon" />
+      </motion.a>
+    </motion.div>
+  </motion.div>
+</section>
+
 
       {/* FAQ Section */}
       <section id="faq" className="faq">
@@ -347,51 +439,72 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {/* Footer */}
       <footer className="footer">
-        <div className="footer-content">
-          <div className="footer-section">
-            <div className="logo">
-              <span className="logo-icon">🚗</span>
-              <span className="logo-text">ColonyCarpool</span>
-            </div>
-            <p>Building connected, sustainable communities one ride at a time.</p>
-            <div className="social-icons">
-              <a href="#">📱</a>
-              <a href="#">💻</a>
-              <a href="#">📘</a>
-              <a href="#">📸</a>
-            </div>
-          </div>
-          <div className="footer-section">
-            <h3>Company</h3>
-            <a href="#">About Us</a>
-            <a href="#">Careers</a>
-            <a href="#">Blog</a>
-            <a href="#">Press</a>
-          </div>
-          <div className="footer-section">
-            <h3>Support</h3>
-            <a href="#">Help Center</a>
-            <a href="#">Contact Us</a>
-            <a href="#">Privacy Policy</a>
-            <a href="#">Terms of Service</a>
-          </div>
-          <div className="footer-section">
-            <h3>Download</h3>
-            <p>Get the app from</p>
-            <div className="download-buttons">
-              <button className="store-button">App Store</button>
-              <button className="store-button">Google Play</button>
-            </div>
-          </div>
-        </div>
-        <div className="footer-bottom">
-          <p>&copy; {new Date().getFullYear()} ColonyCarpool. All rights reserved.</p>
-        </div>
-      </footer>
+  <motion.div
+    className="footer-container"
+    initial={{ opacity: 0, y: 50 }}
+    whileInView={{ opacity: 1, y: 0 }}
+    transition={{ duration: 0.8 }}
+  >
+    {/* Brand Section */}
+    <div className="footer-brand">
+      <h2>ColonyCarpool</h2>
+      <p>
+        Making your daily commute stress-free, affordable, and eco-friendly.  
+        Together, we build a smarter community.
+      </p>
+
+      <div className="footer-socials">
+        <motion.a whileHover={{ scale: 1.2 }} href="#"><FaFacebook /></motion.a>
+        <motion.a whileHover={{ scale: 1.2 }} href="#"><FaTwitter /></motion.a>
+        <motion.a whileHover={{ scale: 1.2 }} href="#"><FaLinkedin /></motion.a>
+        <motion.a whileHover={{ scale: 1.2 }} href="#"><FaInstagram /></motion.a>
+      </div>
+    </div>
+
+    {/* Links Section */}
+    <div className="footer-links">
+      <h3>Quick Links</h3>
+      <ul>
+        <motion.li whileHover={{ x: 5 }}><a href="/">Home</a></motion.li>
+        <motion.li whileHover={{ x: 5 }}><a href="/about">About Us</a></motion.li>
+        <motion.li whileHover={{ x: 5 }}><a href="/features">Features</a></motion.li>
+        <motion.li whileHover={{ x: 5 }}><a href="/contact">Contact</a></motion.li>
+      </ul>
+    </div>
+
+    {/* Resources Section */}
+    <div className="footer-links">
+      <h3>Resources</h3>
+      <ul>
+        <motion.li whileHover={{ x: 5 }}><a href="/faq">FAQ</a></motion.li>
+        <motion.li whileHover={{ x: 5 }}><a href="/support">Support</a></motion.li>
+        <motion.li whileHover={{ x: 5 }}><a href="/privacy">Privacy Policy</a></motion.li>
+        <motion.li whileHover={{ x: 5 }}><a href="/terms">Terms & Conditions</a></motion.li>
+      </ul>
+    </div>
+
+    {/* Newsletter Section */}
+    <div className="footer-newsletter">
+      <h3>Stay Updated</h3>
+      <p>Subscribe to our newsletter to get the latest updates and offers.</p>
+      <div className="newsletter-form">
+        <input type="email" placeholder="Enter your email" />
+        <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+          Subscribe
+        </motion.button>
+      </div>
+    </div>
+  </motion.div>
+
+  <div className="footer-bottom">
+    <p>© {new Date().getFullYear()} ColonyCarpool. All rights reserved.</p>
+  </div>
+</footer>
+
     </div>
   );
 };
+
 
 export default LandingPage;

@@ -4,6 +4,7 @@ import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 import './Signup.css';
+import logo from '../assets/logo.png';
 
 const Signup = () => {
   const [formData, setFormData] = useState({
@@ -63,66 +64,120 @@ const Signup = () => {
   };
 
   return (
-    <div className="auth-container">
-      <div className="auth-form">
-        <h2>Create Your Account</h2>
-        <form onSubmit={handleSubmit}>
-          <input 
-            type="text" 
-            name="name" 
-            placeholder="Full Name" 
-            value={formData.name} 
-            onChange={handleChange} 
-            required 
-          />
-          <input 
-            type="tel" 
-            name="phoneNumber" 
-            placeholder="Phone Number" 
-            value={formData.phoneNumber} 
-            onChange={handleChange} 
-            required 
-          />
-          <input 
-            type="text" 
-            name="housingSociety" 
-            placeholder="Housing Society Name" 
-            value={formData.housingSociety} 
-            onChange={handleChange} 
-            required 
-          />
-          <input 
-            type="text" 
-            name="flatNumber" 
-            placeholder="Flat Number" 
-            value={formData.flatNumber} 
-            onChange={handleChange} 
-            required 
-          />
-          <input 
-            type="email" 
-            name="email" 
-            placeholder="Email Address" 
-            value={formData.email} 
-            onChange={handleChange} 
-            required 
-          />
-          <input 
-            type="password" 
-            name="password" 
-            placeholder="Password" 
-            value={formData.password} 
-            onChange={handleChange} 
-            required 
-          />
-          <button type="submit" disabled={isLoading}>
-            {isLoading ? 'Creating Account...' : 'Sign Up'}
+    <div className="auth-container signup-page">
+      <div className="auth-background">
+        <div className="shape shape-1"></div>
+        <div className="shape shape-2"></div>
+        <div className="shape shape-3"></div>
+        <div className="shape shape-4"></div>
+      </div>
+      
+      <div className="auth-card">
+        <div className="card-header">
+          
+          <div className="logo">
+            <img src={logo} alt="Logo" className="" style={{ height: '60px', width: 'auto' }} />
+            <span className="logo-text">ColonyCarpool</span>
+          </div>
+          <h2>Create Account</h2>
+          <p>Join your community today</p>
+        </div>
+        
+        <form onSubmit={handleSubmit} className="auth-form">
+          <div className="form-row">
+            <div className="input-group">
+              <input 
+                type="text" 
+                name="name" 
+                value={formData.name} 
+                onChange={handleChange} 
+                required 
+              />
+              <label>Full Name</label>
+              <span className="input-border"></span>
+            </div>
+            
+            <div className="input-group">
+              <input 
+                type="tel" 
+                name="phoneNumber" 
+                value={formData.phoneNumber} 
+                onChange={handleChange} 
+                required 
+              />
+              <label>Phone Number</label>
+              <span className="input-border"></span>
+            </div>
+          </div>
+          
+          <div className="form-row">
+            <div className="input-group">
+              <input 
+                type="text" 
+                name="housingSociety" 
+                value={formData.housingSociety} 
+                onChange={handleChange} 
+                required 
+              />
+              <label>Housing Society</label>
+              <span className="input-border"></span>
+            </div>
+            
+            <div className="input-group">
+              <input 
+                type="text" 
+                name="flatNumber" 
+                value={formData.flatNumber} 
+                onChange={handleChange} 
+                required 
+              />
+              <label>Flat Number</label>
+              <span className="input-border"></span>
+            </div>
+          </div>
+          
+          <div className="input-group">
+            <input 
+              type="email" 
+              name="email" 
+              value={formData.email} 
+              onChange={handleChange} 
+              required 
+            />
+            <label>Email Address</label>
+            <span className="input-border"></span>
+          </div>
+          
+          <div className="input-group">
+            <input 
+              type="password" 
+              name="password" 
+              value={formData.password} 
+              onChange={handleChange} 
+              required 
+            />
+            <label>Password</label>
+            <span className="input-border"></span>
+          </div>
+          
+          <button type="submit" disabled={isLoading} className="auth-button">
+            {isLoading ? (
+              <div className="button-loader"></div>
+            ) : (
+              'Create Account'
+            )}
           </button>
         </form>
-        {message && <p className={message.includes('Error') ? 'message error' : 'message success'}>{message}</p>}
-        <p className="auth-link">
-          Already have an account? <Link to="/login">Login here</Link>.
-        </p>
+        
+        {message && (
+          <div className={`message ${message.includes('Error') ? 'error' : 'success'}`}>
+            {message}
+          </div>
+        )}
+        
+        <div className="auth-footer">
+          <p>Already have an account? <Link to="/login" className="auth-link">Login here</Link></p>
+        </div>
       </div>
     </div>
   );
