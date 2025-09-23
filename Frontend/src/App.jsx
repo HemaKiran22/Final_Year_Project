@@ -8,7 +8,10 @@ import Profile from './screens/Profile';
 import Settings from './screens/Settings';
 import SocietyFeed from './screens/SocietyFeed';
 import Leaderboard from './screens/Leaderboard';
+import RideChatbot from './screens/RideChatbot';
+import PrivateChat from './Screens/PrivateChat';
 
+ 
 
 function App() {
   return (
@@ -22,6 +25,9 @@ function App() {
       <Route path="/settings" element={<Settings />} />
       <Route path="/societyfeed" element={<SocietyFeed />} />
       <Route path="/leaderboard" element={<Leaderboard />} />
+      <Route path="/aibot" element={<RideChatbot />} />
+      <Route path="/privatechat/:chatId" element={<PrivateChat />} />
+
       
     </Routes>
   );

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { collection, onSnapshot, addDoc, query, where, getDocs, doc, setDoc, getDoc, updateDoc } from "firebase/firestore";
+import { collection, onSnapshot, addDoc, query, where, getDocs, doc, setDoc, getDoc, updateDoc, orderBy } from "firebase/firestore";
 import { signOut } from "firebase/auth";
 import { auth, db } from "../firebase.js";
 import { FaUserCircle, FaCog, FaSignOutAlt, FaPlus, FaComments, FaTrophy, FaRobot, FaUser, FaTimes, FaCar, FaMoneyBillWave, FaSun, FaPaperPlane, FaRoute, FaLeaf, FaStar, FaBell, FaHome, FaRoad, FaCalendarAlt, FaUsers, FaQuestionCircle, FaMapMarkerAlt } from 'react-icons/fa';
@@ -13,7 +13,7 @@ import { useNavigate } from 'react-router-dom';
 import HelpSupport from './HelpSupport';
 
 // Import Google Maps components
-import { GoogleMap, LoadScript, Marker, InfoWindow } from '@react-google-maps/api';
+import { GoogleMap, Marker, InfoWindow, useJsApiLoader } from '@react-google-maps/api';
 
 const Dashboard = () => {
   const [myRides, setMyRides] = useState([]);
@@ -32,12 +32,16 @@ const Dashboard = () => {
   });
   const [userProfile, setUserProfile] = useState(null);
   const [activeMenu, setActiveMenu] = useState('dashboard');
-  const [notifications, setNotifications] = useState(3);
+  const [notifications, setNotifications] = useState(0);
+  const [notificationsList, setNotificationsList] = useState([]);
   const [selectedRide, setSelectedRide] = useState(null);
   const [mapCenter, setMapCenter] = useState({ 
     lat: 12.8420,
     lng: 77.6611
   });
+  const [showRatingModal, setShowRatingModal] = useState(false);
+  const [ratingTargetUserId, setRatingTargetUserId] = useState(null);
+  const [ratingValue, setRatingValue] = useState(5);
 
   const navigate = useNavigate();
 
@@ -52,6 +56,12 @@ const Dashboard = () => {
     zoomControl: true,
   };
 
+  // Load Google Maps script once using Vite env var
+  const { isLoaded } = useJsApiLoader({
+    id: 'google-map-script',
+    googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '',
+  });
+
   useEffect(() => {
     const unsubscribeAuth = auth.onAuthStateChanged(async (user) => {
       if (user) {
@@ -62,13 +72,26 @@ const Dashboard = () => {
         const docSnap = await getDoc(userRef);
 
         if (!docSnap.exists()) {
-          await setDoc(userRef, { moneySaved: 0, ridesShared: 0 });
+          await setDoc(userRef, { moneySaved: 0, ridesShared: 0, averageRating: 0, totalRatings: 0 });
         }
 
         const unsubscribeProfile = onSnapshot(userRef, (doc) => {
           if (doc.exists()) {
             setUserProfile(doc.data());
           }
+        });
+
+        // Listen for unread notifications for this user
+        const notifsQuery = query(
+          collection(db, 'notifications'),
+          where('toUserId', '==', user.uid),
+          where('read', '==', false),
+          orderBy('createdAt', 'desc')
+        );
+        const unsubscribeNotifs = onSnapshot(notifsQuery, (snapshot) => {
+          const notifs = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+          setNotificationsList(notifs);
+          setNotifications(notifs.length);
         });
         return () => unsubscribeProfile();
       } else {
@@ -156,6 +179,21 @@ const Dashboard = () => {
     }
   };
 
+  const handleOpenNotifications = async () => {
+    if (notificationsList.length === 0) return;
+    const latest = notificationsList[0];
+    try {
+      if (latest.id) {
+        await updateDoc(doc(db, 'notifications', latest.id), { read: true });
+      }
+    } catch (e) {
+      console.error('Failed to mark notification as read', e);
+    }
+    if (latest.chatId) {
+      navigate(`/privatechat/${latest.chatId}`);
+    }
+  };
+
   const handleConfirmRide = async (ride) => {
     if (ride.isCompleted) {
       alert("This ride has already been confirmed.");
@@ -181,12 +219,65 @@ const Dashboard = () => {
         await updateDoc(rideRef, {
           isCompleted: true,
         });
+
+        // Create rating notifications for driver and passengers
+        const passengerIds = Array.isArray(ride.passengers) ? ride.passengers : [];
+        for (const passengerId of passengerIds) {
+          // Ask passenger to rate driver
+          await addDoc(collection(db, 'notifications'), {
+            toUserId: passengerId,
+            fromUserId: userId,
+            rideId: ride.id,
+            type: 'rate',
+            rateUserId: ride.driverId,
+            createdAt: new Date(),
+            read: false,
+          });
+          // Ask driver to rate this passenger
+          await addDoc(collection(db, 'notifications'), {
+            toUserId: userId,
+            fromUserId: passengerId,
+            rideId: ride.id,
+            type: 'rate',
+            rateUserId: passengerId,
+            createdAt: new Date(),
+            read: false,
+          });
+        }
   
+        // Open rating modal for the first passenger if exists
+        if (passengerIds.length > 0) {
+          setRatingTargetUserId(passengerIds[0]);
+          setRatingValue(5);
+          setShowRatingModal(true);
+        }
+
         alert(`Ride to ${ride.destination} confirmed! You have earned ₹${moneySavedPerPerson}.`);
       } catch (error) {
         console.error("Error confirming ride:", error);
         alert("Failed to confirm the ride. Please try again.");
       }
+    }
+  };
+
+  const submitRating = async () => {
+    try {
+      if (!ratingTargetUserId || !Number.isFinite(Number(ratingValue))) return;
+      const ratedUserRef = doc(db, 'users', ratingTargetUserId);
+      const ratedSnap = await getDoc(ratedUserRef);
+      const prevAvg = ratedSnap.data()?.averageRating || 0;
+      const prevCount = ratedSnap.data()?.totalRatings || 0;
+      const val = Math.max(1, Math.min(5, Number(ratingValue)));
+      const newAvg = ((prevAvg * prevCount) + val) / (prevCount + 1);
+      await updateDoc(ratedUserRef, {
+        averageRating: newAvg,
+        totalRatings: prevCount + 1,
+      });
+    } catch (e) {
+      console.error('Failed to submit rating', e);
+    } finally {
+      setShowRatingModal(false);
+      setRatingTargetUserId(null);
     }
   };
   
@@ -299,7 +390,7 @@ const Dashboard = () => {
                 </div>
               </div>
               
-              <LoadScript googleMapsApiKey={process.env.REACT_APP_GOOGLE_MAPS_API_KEY}>
+              {isLoaded && (
                 <GoogleMap
                   mapContainerStyle={mapContainerStyle}
                   zoom={12}
@@ -351,7 +442,7 @@ const Dashboard = () => {
                     </InfoWindow>
                   )}
                 </GoogleMap>
-              </LoadScript>
+              )}
             </div>
             
             <div className="stats-container">
@@ -380,7 +471,7 @@ const Dashboard = () => {
                   <FaLeaf />
                 </div>
                 <div className="stat-info">
-                  <h3>{(userProfile?.ridesShared || 0) * 4.6} kg</h3>
+                  <h3>{(((userProfile?.ridesShared || 0) * 4.6).toFixed(2))} kg</h3>
                   <p>CO₂ Reduced</p>
                 </div>
               </div>
@@ -390,7 +481,7 @@ const Dashboard = () => {
                   <FaStar />
                 </div>
                 <div className="stat-info">
-                  <h3>4.8</h3>
+                  <h3>{(userProfile?.averageRating ? Number(userProfile.averageRating) : 0).toFixed(1)}</h3>
                   <p>Average Rating</p>
                 </div>
               </div>
@@ -410,11 +501,11 @@ const Dashboard = () => {
                   <p>Share your ride details with the community</p>
                 </div>
                 
-                <div className="feature-card" onClick={() => navigate('')}>
+                <div className="feature-card" onClick={() => navigate('/aibot')}>
                   <div className="card-icon">
                     <FaRobot />
                   </div>
-                  <h3>Find a Ride</h3>
+                  <h3>AI Agent</h3>
                   <p>Use our AI agent to find the perfect ride</p>
                 </div>
                 
@@ -512,13 +603,14 @@ const Dashboard = () => {
           <h1 className="page-title">
             {activeMenu === 'dashboard' && 'Dashboard'}
             {activeMenu === 'rides' && 'My Rides'}
-            {activeMenu === 'schedule' && 'Schedule'}
-            {activeMenu === 'messages' && 'Messages'}
-            {activeMenu === 'members' && 'Members'}
+            {activeMenu === 'profile' && 'Profile'}
+            {activeMenu === 'settings' && 'Settings'}
+            {activeMenu === 'feed' && 'Society Feed'}
+            {activeMenu === 'leaderboard' && 'Leaderboard'}
             {activeMenu === 'help' && 'Help & Support'}
           </h1>
           <div className="user-menu">
-            <div className="notification-bell">
+            <div className="notification-bell" onClick={handleOpenNotifications}>
               <FaBell />
               <span className="notification-badge">{notifications}</span>
             </div>
@@ -574,6 +666,29 @@ const Dashboard = () => {
               </div>
               <button type="submit" className="post-ride-submit-btn">Post Ride</button>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Rating Modal */}
+      {showRatingModal && (
+        <div className="form-modal-overlay">
+          <div className="form-modal">
+            <button className="close-btn" onClick={() => setShowRatingModal(false)}>
+              <FaTimes />
+            </button>
+            <h2>Rate Your Co-rider</h2>
+            <div className="form-group">
+              <label>Rating (1-5):</label>
+              <input
+                type="number"
+                min="1"
+                max="5"
+                value={ratingValue}
+                onChange={(e) => setRatingValue(e.target.value)}
+              />
+            </div>
+            <button className="post-ride-submit-btn" onClick={submitRating}>Submit Rating</button>
           </div>
         </div>
       )}

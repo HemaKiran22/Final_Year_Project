@@ -65,8 +65,10 @@ body::before {
 }
 
 .dashboard-container {
-  display: flex;
+  display: block;
   min-height: 100vh;
+  width: 100%;
+  overflow-x: hidden;
 }
 
 /* Sidebar Styles */
@@ -148,8 +150,8 @@ body::before {
 
 /* Main Content */
 .main-content {
-  flex: 1;
   margin-left: 260px;
+  width: calc(100% - 260px);
   padding: 20px;
   transition: all 0.3s;
 }
@@ -696,6 +698,7 @@ body::before {
   
   .main-content {
     margin-left: 80px;
+    width: calc(100% - 80px);
   }
 }
 
