@@ -1,0 +1,50 @@
+.leaderboard-card {
+  background-color: var(--card-bg-color);
+  padding: 40px;
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow);
+  max-width: 600px;
+  width: 100%;
+  text-align: center;
+}
+
+.leaderboard-card h1 {
+  color: var(--primary-color);
+  margin-bottom: 20px;
+}
+
+.leaderboard-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.leaderboard-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 20px;
+  background-color: #f9fbf9;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+}
+
+.leaderboard-rank {
+  font-size: 1.2rem;
+  font-weight: bold;
+  color: var(--primary-dark);
+}
+
+.leaderboard-name {
+  flex-grow: 1;
+  text-align: left;
+  margin-left: 20px;
+  font-size: 1rem;
+}
+
+.leaderboard-metric {
+  font-size: 1rem;
+  font-weight: bold;
+  color: var(--accent-color);
+}
