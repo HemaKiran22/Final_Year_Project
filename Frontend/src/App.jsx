@@ -1,14 +1,14 @@
 import React from 'react';
 import { Routes, Route } from 'react-router-dom';
-import LandingPage from './screens/LandingPage';
-import Signup from './screens/Signup';
-import Login from './screens/Login';
-import Dashboard from './screens/Dashboard';
-import Profile from './screens/Profile';
-import Settings from './screens/Settings';
-import SocietyFeed from './screens/SocietyFeed';
-import Leaderboard from './screens/Leaderboard';
-import RideChatbot from './screens/RideChatbot';
+import LandingPage from './Screens/LandingPage';
+import Signup from './Screens/Signup';
+import Login from './Screens/Login';
+import Dashboard from './Screens/Dashboard';
+import Profile from './Screens/Profile';
+import Settings from './Screens/Settings';
+import SocietyFeed from './Screens/SocietyFeed';
+import Leaderboard from './Screens/Leaderboard';
+import RideChatbot from './Screens/RideChatbot';
 import PrivateChat from './Screens/PrivateChat';
 
  
