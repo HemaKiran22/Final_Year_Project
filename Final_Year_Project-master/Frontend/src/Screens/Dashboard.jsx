@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { collection, onSnapshot, addDoc, query, where, getDocs, doc, setDoc, getDoc, updateDoc, orderBy, runTransaction } from "firebase/firestore";
 import { signOut } from "firebase/auth";
 import { auth, db } from "../firebase.js";
@@ -55,6 +55,7 @@ const Dashboard = () => {
   const [achievements, setAchievements] = useState([]);
   const [currentStreak, setCurrentStreak] = useState(0);
   const [showShortcutsHelp, setShowShortcutsHelp] = useState(false);
+  const shownNotifIdsRef = useRef(new Set());
 
   const navigate = useNavigate();
 
@@ -81,6 +82,30 @@ const Dashboard = () => {
       setTheme(savedTheme);
     }
   }, []);
+
+  // Show a browser notification when a new chat message notification arrives
+  useEffect(() => {
+    if (!notificationsList.length || !userId) return;
+
+    notificationsList.forEach((notif) => {
+      if (notif.type === 'message' && notif.fromUserId !== userId) {
+        if (shownNotifIdsRef.current.has(notif.id)) return;
+        shownNotifIdsRef.current.add(notif.id);
+
+        if ('Notification' in window) {
+          if (Notification.permission === 'default') {
+            Notification.requestPermission();
+          }
+          if (Notification.permission === 'granted') {
+            new Notification('New chat message', {
+              body: notif.text || 'You received a new message',
+              icon: '/logo.png',
+            });
+          }
+        }
+      }
+    });
+  }, [notificationsList, userId]);
 
   useEffect(() => {
     localStorage.setItem('cc-theme', theme);
