@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { collection, onSnapshot, addDoc, query, where, getDocs, doc, setDoc, getDoc, updateDoc, orderBy } from "firebase/firestore";
+import { collection, onSnapshot, addDoc, query, where, getDocs, doc, setDoc, getDoc, updateDoc, orderBy, runTransaction } from "firebase/firestore";
 import { signOut } from "firebase/auth";
 import { auth, db } from "../firebase.js";
 import { FaUserCircle, FaCog, FaSignOutAlt, FaPlus, FaComments, FaTrophy, FaRobot, FaUser, FaTimes, FaCar, FaMoneyBillWave, FaSun, FaPaperPlane, FaRoute, FaLeaf, FaStar, FaBell, FaHome, FaRoad, FaCalendarAlt, FaUsers, FaQuestionCircle, FaMapMarkerAlt } from 'react-icons/fa';
 import logo from "../assets/logo.png";
-import './dashboard.css';
+import './Dashboard.css';
 import { useNavigate } from 'react-router-dom';
-
+import { clusterRides, formatClusterResults, getClusteringStats } from '../services/clusteringService';
+import ClusteredRideGroups from '../components/ClusteredRideGroups';
 
 // Import components (you'll need to create these)
 
@@ -42,6 +43,10 @@ const Dashboard = () => {
   const [showRatingModal, setShowRatingModal] = useState(false);
   const [ratingTargetUserId, setRatingTargetUserId] = useState(null);
   const [ratingValue, setRatingValue] = useState(5);
+  const [clusteredGroups, setClusteredGroups] = useState([]);
+  const [clusteringStats, setClusteringStats] = useState(null);
+  const [showClusterView, setShowClusterView] = useState(false);
+  const [joiningGroupId, setJoiningGroupId] = useState(null);
 
   const navigate = useNavigate();
 
@@ -127,10 +132,46 @@ const Dashboard = () => {
         ...doc.data()
       }));
       setAllRides(fetchedRides);
+      
+      // Auto-cluster rides whenever they change
+      performClustering(fetchedRides);
     });
 
     return () => unsubscribeAllRides();
   }, []);
+
+  // Clustering function
+  const performClustering = (rides) => {
+    if (!rides || rides.length === 0) {
+      setClusteredGroups([]);
+      setClusteringStats(null);
+      return;
+    }
+
+    // Prepare ride data for clustering
+    const ridesForClustering = rides.map(ride => ({
+      ...ride,
+      pickupLat: ride.pickupLat || 12.8420, // Default to Bangalore if not set
+      pickupLng: ride.pickupLng || 77.6611,
+      pickupLocation: ride.community,
+      userName: ride.driverName
+    }));
+
+    // Cluster rides (max 3 per group)
+    const clusters = clusterRides(ridesForClustering, {
+      maxGroupSize: 3,
+      timeWindowMinutes: 15,
+      proximityKm: 2
+    });
+
+    // Format for display
+    const formatted = formatClusterResults(clusters);
+    setClusteredGroups(formatted);
+
+    // Calculate stats
+    const stats = getClusteringStats(ridesForClustering, clusters);
+    setClusteringStats(stats);
+  };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -151,7 +192,9 @@ const Dashboard = () => {
         driverId: userId,
         createdAt: new Date(),
         price: Number(newRide.price),
+        seats: Number(newRide.seats),
         isCompleted: false,
+        passengers: [],
       });
       alert('Ride posted successfully!');
       setNewRide({
@@ -220,8 +263,11 @@ const Dashboard = () => {
           isCompleted: true,
         });
 
-        // Create rating notifications for driver and passengers
+        // Determine who to rate based on role
         const passengerIds = Array.isArray(ride.passengers) ? ride.passengers : [];
+        const isDriver = ride.driverId === userId;
+        
+        // Create rating notifications for driver and passengers
         for (const passengerId of passengerIds) {
           // Ask passenger to rate driver
           await addDoc(collection(db, 'notifications'), {
@@ -245,14 +291,20 @@ const Dashboard = () => {
           });
         }
   
-        // Open rating modal for the first passenger if exists
-        if (passengerIds.length > 0) {
+        alert(`Ride to ${ride.destination} confirmed! You have earned ₹${moneySavedPerPerson.toFixed(2)}.`);
+        
+        // Show rating modal based on role
+        if (isDriver && passengerIds.length > 0) {
+          // Driver rates the first passenger
           setRatingTargetUserId(passengerIds[0]);
           setRatingValue(5);
           setShowRatingModal(true);
+        } else if (!isDriver && ride.driverId) {
+          // Passenger rates the driver
+          setRatingTargetUserId(ride.driverId);
+          setRatingValue(5);
+          setShowRatingModal(true);
         }
-
-        alert(`Ride to ${ride.destination} confirmed! You have earned ₹${moneySavedPerPerson}.`);
       } catch (error) {
         console.error("Error confirming ride:", error);
         alert("Failed to confirm the ride. Please try again.");
@@ -278,6 +330,74 @@ const Dashboard = () => {
     } finally {
       setShowRatingModal(false);
       setRatingTargetUserId(null);
+    }
+  };
+
+  const handleJoinGroup = async (group) => {
+    if (!userId) {
+      alert('You must be logged in to join a group.');
+      navigate('/login');
+      return;
+    }
+
+    const candidateRide = group?.rideOptions?.find(r => r.seatsRemaining > 0 && r.rideId);
+    if (!candidateRide) {
+      alert('This group is full or no ride is available.');
+      return;
+    }
+
+    setJoiningGroupId(group.groupId);
+    try {
+      await runTransaction(db, async (transaction) => {
+        const rideRef = doc(db, 'rides', candidateRide.rideId);
+        const rideSnap = await transaction.get(rideRef);
+        if (!rideSnap.exists()) {
+          throw new Error('Ride no longer exists.');
+        }
+
+        const rideData = rideSnap.data();
+        const seats = Number(rideData.seats) || 0;
+        const passengersArr = Array.isArray(rideData.passengers) ? rideData.passengers : [];
+
+        if (passengersArr.includes(userId)) {
+          throw new Error('You already joined this ride.');
+        }
+
+        if (seats > 0 && passengersArr.length >= seats) {
+          throw new Error('No seats left in this ride.');
+        }
+
+        transaction.update(rideRef, {
+          passengers: [...passengersArr, userId],
+        });
+      });
+
+      // Best-effort notify driver that someone joined their ride
+      if (candidateRide.driverId) {
+        try {
+          await addDoc(collection(db, 'notifications'), {
+            toUserId: candidateRide.driverId,
+            fromUserId: userId,
+            rideId: candidateRide.rideId,
+            type: 'join',
+            createdAt: new Date(),
+            read: false,
+            message: `${userName} joined your ride group.`
+          });
+        } catch (notifyErr) {
+          console.warn('Notification write skipped (permissions?):', notifyErr);
+        }
+      }
+
+      alert('Joined the group!');
+    } catch (error) {
+      console.error('Failed to join group:', error);
+      const fallback = error?.code === 'permission-denied'
+        ? 'You do not have permission to join this ride. Please ensure you are logged in.'
+        : 'Could not join this group. Please try another.';
+      alert(error.message || fallback);
+    } finally {
+      setJoiningGroupId(null);
     }
   };
   
@@ -350,6 +470,21 @@ const Dashboard = () => {
         return <Members userId={userId} />;
       case 'help':
         return <HelpSupport />;
+      case 'groups':
+        return (
+          <div className="dashboard-section animate-in delay-2">
+            <div className="section-header">
+              <h2 className="section-title">Optimized Ride Groups</h2>
+              <p className="section-subtitle">AI-powered carpooling groups to save money and reduce traffic</p>
+            </div>
+            <ClusteredRideGroups 
+              clusters={clusteredGroups} 
+              stats={clusteringStats}
+              onJoinGroup={handleJoinGroup}
+              joiningGroupId={joiningGroupId}
+            />
+          </div>
+        );
       case 'rides':
         return (
           <div className="dashboard-section animate-in delay-2">
@@ -461,7 +596,7 @@ const Dashboard = () => {
                   <FaMoneyBillWave />
                 </div>
                 <div className="stat-info">
-                  <h3>₹{userProfile?.moneySaved || '0'}</h3>
+                  <h3>₹{(userProfile?.moneySaved || 0).toFixed(2)}</h3>
                   <p>Money Saved</p>
                 </div>
               </div>
@@ -499,6 +634,14 @@ const Dashboard = () => {
                   </div>
                   <h3>Post a Ride</h3>
                   <p>Share your ride details with the community</p>
+                </div>
+                
+                <div className="feature-card" onClick={() => setActiveMenu('groups')}>
+                  <div className="card-icon">
+                    <FaUsers />
+                  </div>
+                  <h3>Find My Group</h3>
+                  <p>Join optimized ride groups and save money</p>
                 </div>
                 
                 <div className="feature-card" onClick={() => navigate('/aibot')}>
@@ -560,6 +703,10 @@ const Dashboard = () => {
             <FaRoad className="menu-icon" />
             <span className="menu-text">My Rides</span>
           </div>
+          <div className={`menu-item ${activeMenu === 'groups' ? 'active' : ''}`} onClick={() => setActiveMenu('groups')}>
+            <FaUsers className="menu-icon" />
+            <span className="menu-text">Ride Groups</span>
+          </div>
           
           
           <div className="menu-label">Community</div>
@@ -603,6 +750,7 @@ const Dashboard = () => {
           <h1 className="page-title">
             {activeMenu === 'dashboard' && 'Dashboard'}
             {activeMenu === 'rides' && 'My Rides'}
+            {activeMenu === 'groups' && 'Ride Groups'}
             {activeMenu === 'profile' && 'Profile'}
             {activeMenu === 'settings' && 'Settings'}
             {activeMenu === 'feed' && 'Society Feed'}
@@ -678,15 +826,20 @@ const Dashboard = () => {
               <FaTimes />
             </button>
             <h2>Rate Your Co-rider</h2>
+            <p style={{ marginBottom: '15px', color: '#666' }}>How was your ride experience? Please rate from 1 to 5 stars.</p>
             <div className="form-group">
-              <label>Rating (1-5):</label>
-              <input
-                type="number"
-                min="1"
-                max="5"
-                value={ratingValue}
-                onChange={(e) => setRatingValue(e.target.value)}
-              />
+              <label>Rating (1-5 stars):</label>
+              <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginTop: '10px' }}>
+                <input
+                  type="number"
+                  min="1"
+                  max="5"
+                  value={ratingValue}
+                  onChange={(e) => setRatingValue(e.target.value)}
+                  style={{ width: '80px', padding: '8px', fontSize: '16px' }}
+                />
+                <span style={{ fontSize: '24px', color: '#f39c12' }}>{'⭐'.repeat(Math.min(5, Math.max(1, Number(ratingValue))))}</span>
+              </div>
             </div>
             <button className="post-ride-submit-btn" onClick={submitRating}>Submit Rating</button>
           </div>

@@ -4,15 +4,14 @@ import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 
 // Your web app's Firebase configuration
-// 🔁 REPLACE THIS ENTIRE OBJECT WITH THE ONE FROM YOUR FIREBASE CONSOLE
 const firebaseConfig = {
-  apiKey: "AIzaSyAuIc-OPQuIwyXGTApb-tO8v8PEVovWgFo",
-  authDomain: "colonycarpool.firebaseapp.com",
-  projectId: "colonycarpool",
-  storageBucket: "colonycarpool.firebasestorage.app",
-  messagingSenderId: "289378792340",
-  appId: "1:289378792340:web:9936cd805095a2155d9581",
-  measurementId: "G-K44BBME7ED"
+  apiKey: "AIzaSyCCDCZz07zJAi-qhqsf4nQzyePNoynh8zY",
+  authDomain: "colonycarpool-3d543.firebaseapp.com",
+  projectId: "colonycarpool-3d543",
+  storageBucket: "colonycarpool-3d543.firebasestorage.app",
+  messagingSenderId: "96179573561",
+  appId: "1:96179573561:web:87eb1de9825800b0a4cee8",
+  measurementId: "G-YRLHSLTWX7"
 };
 
 // Initialize Firebase
