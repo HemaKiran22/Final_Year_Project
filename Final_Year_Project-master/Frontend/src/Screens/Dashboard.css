@@ -20,6 +20,25 @@
   --border-radius-lg: 20px;
 }
 
+.theme-dark {
+  --primary: #7dd3fc;
+  --secondary: #34d399;
+  --accent: #fbbf24;
+  --success: #34d399;
+  --info: #67e8f9;
+  --warning: #fbbf24;
+  --danger: #f87171;
+  --light: #1f2937;
+  --dark: #e5e7eb;
+  --gray: #9ca3af;
+  --light-gray: #374151;
+  --community-green: #22c55e;
+  --community-blue: #60a5fa;
+  --card-bg: #111827;
+  --shadow-light: 0 5px 15px rgba(0, 0, 0, 0.4);
+  --shadow-dark: 0 10px 30px rgba(0, 0, 0, 0.6);
+}
+
 /* Global Styles */
 * {
   margin: 0;
@@ -37,6 +56,11 @@ body {
   z-index: 1;
   background-size: 400% 400%;
   animation: background-animate 15s ease infinite;
+}
+
+.theme-dark {
+  background: linear-gradient(135deg, #0f172a, #111827);
+  color: var(--dark);
 }
 
 @keyframes background-animate {
@@ -295,6 +319,52 @@ body::before {
   margin-bottom: 30px;
   box-shadow: var(--shadow-light);
   border: 1px solid var(--light-gray);
+
+.theme-dark .sidebar,
+.theme-dark .main-content,
+.theme-dark .dashboard-section,
+.theme-dark .stat-card,
+.theme-dark .ride-card,
+.theme-dark .feature-card,
+.theme-dark .ride-group-card,
+.theme-dark .form-modal,
+.theme-dark .no-rides {
+  background: var(--card-bg);
+  color: var(--dark);
+  box-shadow: var(--shadow-dark);
+}
+
+.theme-dark .menu-item:hover,
+.theme-dark .menu-item.active {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.theme-dark .map-info-window,
+.theme-dark .stat-info h3,
+.theme-dark .stat-info p,
+.theme-dark .page-title,
+.theme-dark .menu-label,
+.theme-dark .group-members h5,
+.theme-dark .group-route strong,
+.theme-dark .group-time,
+.theme-dark .ride-date,
+.theme-dark .ride-meta,
+.theme-dark .ride-confirmed {
+  color: var(--dark);
+}
+
+.theme-dark .notification-bell,
+.theme-dark .menu-item {
+  color: var(--gray);
+}
+
+.theme-dark input,
+.theme-dark select,
+.theme-dark textarea {
+  background: #0b1220;
+  color: var(--dark);
+  border: 1px solid var(--light-gray);
+}
 }
 
 .section-header {
@@ -341,6 +411,15 @@ body::before {
 .ride-card:hover {
   transform: translateY(-5px);
   box-shadow: var(--shadow-dark);
+}
+
+.suggested-ride {
+  border-left: 4px solid #fbbf24;
+  background: linear-gradient(to right, #fffbeb, var(--card-bg));
+}
+
+.theme-dark .suggested-ride {
+  background: linear-gradient(to right, #1a1408, var(--card-bg));
 }
 
 .ride-header {
@@ -784,4 +863,23 @@ body::before {
   .map-container {
     height: 250px;
   }
+}
+
+.theme-toggle {
+  border: 1px solid var(--light-gray);
+  background: var(--card-bg);
+  color: var(--dark);
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.theme-toggle:hover {
+  box-shadow: var(--shadow-light);
+  transform: translateY(-1px);
 }

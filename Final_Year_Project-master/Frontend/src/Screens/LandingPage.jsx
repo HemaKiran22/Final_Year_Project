@@ -1,16 +1,19 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import logo from '../assets/logo.png';
 import './LandingPage.css';
-import { FaLock, FaLeaf } from "react-icons/fa";
+import { FaLock, FaLeaf, FaCar, FaUsers as FaUsersIcon, FaChartLine, FaMapMarkerAlt } from "react-icons/fa";
 import { MdAttachMoney } from "react-icons/md";
 import { motion } from "framer-motion";
 import { FaShieldAlt,  FaWallet, FaQuoteLeft } from "react-icons/fa";
+import { HiUserGroup } from "react-icons/hi";
 import { FaGooglePlay, FaAppStoreIos, FaArrowRight } from "react-icons/fa";
 import { FaFacebook, FaTwitter, FaLinkedin, FaInstagram } from "react-icons/fa";
 
 
 const LandingPage = () => {
+  const navigate = useNavigate();
+  
   // Animated Counter Hook
   function useCountUp(end, duration = 2000) {
     const [count, setCount] = useState(0);
@@ -38,11 +41,52 @@ const LandingPage = () => {
   const [email, setEmail] = useState('');
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
+  const [showVideoModal, setShowVideoModal] = useState(false);
+  const [currentStory, setCurrentStory] = useState(0);
+  const [statsVisible, setStatsVisible] = useState(false);
+
+  // Success stories data
+  const successStories = [
+    {
+      name: "Priya Sharma",
+      role: "Software Engineer",
+      community: "Green Valley Apartments",
+      image: "👩‍💼",
+      quote: "ColonyCarpool has saved me ₹15,000 in just 3 months! Plus, I've made great friends in my community.",
+      impact: { rides: 45, saved: 15000, co2: 207 }
+    },
+    {
+      name: "Rajesh Kumar",
+      role: "Marketing Manager",
+      community: "Prestige Heights",
+      image: "👨‍💼",
+      quote: "The AI-powered grouping is amazing. I always find a ride within minutes, and splitting costs makes it so affordable.",
+      impact: { rides: 62, saved: 22000, co2: 285 }
+    },
+    {
+      name: "Ananya Reddy",
+      role: "Teacher",
+      community: "Sunshine Residency",
+      image: "👩‍🏫",
+      quote: "As a daily commuter, this app has been a game-changer. Safe, reliable, and eco-friendly!",
+      impact: { rides: 38, saved: 12500, co2: 175 }
+    }
+  ];
+
+  // Animated counters for live stats
+  const ridesCount = useCountUp(statsVisible ? 12500 : 0, 2000);
+  const usersCount = useCountUp(statsVisible ? 3200 : 0, 2000);
+  const co2Count = useCountUp(statsVisible ? 57500 : 0, 2000);
+  const savingsCount = useCountUp(statsVisible ? 4500000 : 0, 2000);
 
   useEffect(() => {
     const featureInterval = setInterval(() => {
       setActiveFeature((prev) => (prev + 1) % 3);
     }, 5000);
+
+    const storyInterval = setInterval(() => {
+      setCurrentStory((prev) => (prev + 1) % successStories.length);
+    }, 6000);
 
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 50);
@@ -52,9 +96,10 @@ const LandingPage = () => {
 
     return () => {
       clearInterval(featureInterval);
+      clearInterval(storyInterval);
       window.removeEventListener('scroll', handleScroll);
     };
-  }, []);
+  }, [successStories.length]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -103,8 +148,8 @@ const LandingPage = () => {
           <h1>Ride with Trusted Neighbors</h1>
           <p>Connect, commute, and contribute to a greener community with ColonyCarpool - the secure ride-sharing platform exclusively for your housing society.</p>
           <div className="hero-buttons">
-            <button className="css-button-get">Get Started</button>
-            <button className="cta-button secondary">Learn More</button>
+            <button className="css-button-get" onClick={() => navigate('/signup')}>Get Started</button>
+            <button className="cta-button secondary" onClick={() => setShowVideoModal(true)}>Watch Demo</button>
           </div>
         </div>
         <div className="hero-image">
@@ -135,6 +180,68 @@ const LandingPage = () => {
           </div>
         </div>
       </section>
+
+      {/* Live Stats Section with Intersection Observer */}
+      <motion.section 
+        className="live-stats"
+        initial={{ opacity: 0 }}
+        whileInView={{ opacity: 1 }}
+        onViewportEnter={() => setStatsVisible(true)}
+        viewport={{ once: true }}
+      >
+        <h2 style={{ textAlign: 'center', marginBottom: '40px', fontSize: '36px', color: '#333', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px' }}>
+          <FaChartLine /> Our Community Impact
+        </h2>
+        <div className="stats-grid">
+          <motion.div 
+            className="live-stat-card"
+            initial={{ scale: 0 }}
+            whileInView={{ scale: 1 }}
+            transition={{ delay: 0.1 }}
+          >
+            <div className="stat-icon" style={{ fontSize: '48px', color: '#667eea' }}><FaCar /></div>
+            <h3>{ridesCount.toLocaleString()}</h3>
+            <p>Rides Completed</p>
+            <span className="stat-trend">↑ +234 this week</span>
+          </motion.div>
+          
+          <motion.div 
+            className="live-stat-card"
+            initial={{ scale: 0 }}
+            whileInView={{ scale: 1 }}
+            transition={{ delay: 0.2 }}
+          >
+            <div className="stat-icon" style={{ fontSize: '48px', color: '#667eea' }}><HiUserGroup /></div>
+            <h3>{usersCount.toLocaleString()}</h3>
+            <p>Active Users</p>
+            <span className="stat-trend">↑ +156 this month</span>
+          </motion.div>
+          
+          <motion.div 
+            className="live-stat-card"
+            initial={{ scale: 0 }}
+            whileInView={{ scale: 1 }}
+            transition={{ delay: 0.3 }}
+          >
+            <div className="stat-icon" style={{ fontSize: '48px', color: '#667eea' }}><FaLeaf /></div>
+            <h3>{co2Count.toLocaleString()}kg</h3>
+            <p>CO₂ Saved</p>
+            <span className="stat-trend">🌍 Equivalent to 2,500 trees</span>
+          </motion.div>
+          
+          <motion.div 
+            className="live-stat-card"
+            initial={{ scale: 0 }}
+            whileInView={{ scale: 1 }}
+            transition={{ delay: 0.4 }}
+          >
+            <div className="stat-icon" style={{ fontSize: '48px', color: '#667eea' }}><FaWallet /></div>
+            <h3>₹{(savingsCount / 100000).toFixed(1)}L</h3>
+            <p>Money Saved</p>
+            <span className="stat-trend">↑ ₹45K average per user</span>
+          </motion.div>
+        </div>
+      </motion.section>
 
       {/* Stats Section */}
       <section className="stats">
@@ -238,6 +345,70 @@ const LandingPage = () => {
     </div>
   </div>
 </section>
+
+      {/* Community Success Stories Carousel */}
+      <motion.section 
+        className="success-stories"
+        initial={{ opacity: 0 }}
+        whileInView={{ opacity: 1 }}
+        viewport={{ once: true }}
+      >
+        <h2 style={{ textAlign: 'center', marginBottom: '50px', fontSize: '36px', color: '#333', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px' }}>
+          <FaQuoteLeft style={{ fontSize: '28px', color: '#667eea' }} /> Real Stories from Our Community
+        </h2>
+        
+        <div className="stories-carousel">
+          <motion.div 
+            className="story-card"
+            key={currentStory}
+            initial={{ opacity: 0, x: 100 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -100 }}
+            transition={{ duration: 0.5 }}
+          >
+            <div className="story-header">
+              <div className="story-avatar">{successStories[currentStory].image}</div>
+              <div className="story-info">
+                <h3>{successStories[currentStory].name}</h3>
+                <p className="story-role">{successStories[currentStory].role}</p>
+                <p className="story-community" style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                  <FaMapMarkerAlt style={{ color: '#667eea' }} /> {successStories[currentStory].community}
+                </p>
+              </div>
+            </div>
+            
+            <div className="story-quote">
+              <FaQuoteLeft style={{ color: '#667eea', fontSize: '24px', marginBottom: '10px' }} />
+              <p>{successStories[currentStory].quote}</p>
+            </div>
+            
+            <div className="story-impact">
+              <div className="impact-item">
+                <strong>{successStories[currentStory].impact.rides}</strong>
+                <span>Rides</span>
+              </div>
+              <div className="impact-item">
+                <strong>₹{successStories[currentStory].impact.saved.toLocaleString()}</strong>
+                <span>Saved</span>
+              </div>
+              <div className="impact-item">
+                <strong>{successStories[currentStory].impact.co2}kg</strong>
+                <span>CO₂ Reduced</span>
+              </div>
+            </div>
+          </motion.div>
+          
+          <div className="carousel-dots">
+            {successStories.map((_, index) => (
+              <button
+                key={index}
+                className={`dot ${index === currentStory ? 'active' : ''}`}
+                onClick={() => setCurrentStory(index)}
+              />
+            ))}
+          </div>
+        </div>
+      </motion.section>
 
 
       {/* How It Works */}
@@ -387,6 +558,77 @@ const LandingPage = () => {
     </motion.div>
   </motion.div>
 </section>
+
+      {/* Video Demo Modal */}
+      {showVideoModal && (
+        <div className="video-modal-overlay" onClick={() => setShowVideoModal(false)}>
+          <motion.div 
+            className="video-modal"
+            onClick={(e) => e.stopPropagation()}
+            initial={{ scale: 0.5, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.5, opacity: 0 }}
+          >
+            <button className="close-modal" onClick={() => setShowVideoModal(false)}>✕</button>
+            <h2 style={{ marginBottom: '20px', color: '#333' }}>🎥 See ColonyCarpool in Action</h2>
+            
+            <div className="video-container">
+              <div className="demo-placeholder" style={{
+                width: '100%',
+                height: '400px',
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                borderRadius: '12px',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: 'white',
+                position: 'relative',
+                overflow: 'hidden'
+              }}>
+                <div style={{ fontSize: '72px', marginBottom: '20px' }}>▶️</div>
+                <h3 style={{ fontSize: '24px', marginBottom: '10px' }}>Interactive App Demo</h3>
+                <p style={{ fontSize: '16px', opacity: '0.9' }}>Watch how easy it is to find and join rides</p>
+                
+                <div className="demo-features" style={{
+                  position: 'absolute',
+                  bottom: '20px',
+                  display: 'flex',
+                  gap: '20px',
+                  fontSize: '14px'
+                }}>
+                  <span>✓ Smart Matching</span>
+                  <span>✓ Real-time Tracking</span>
+                  <span>✓ Instant Payments</span>
+                </div>
+              </div>
+              
+              {/* Alternatively, embed a real video: */}
+              {/* <iframe 
+                width="100%" 
+                height="400" 
+                src="https://www.youtube.com/embed/YOUR_VIDEO_ID" 
+                frameBorder="0" 
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                allowFullScreen
+                style={{ borderRadius: '12px' }}
+              ></iframe> */}
+            </div>
+            
+            <div style={{ marginTop: '20px', textAlign: 'center' }}>
+              <button 
+                className="auth-button"
+                onClick={() => {
+                  setShowVideoModal(false);
+                  navigate('/signup');
+                }}
+              >
+                Get Started Now
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
 
 
       {/* FAQ Section */}

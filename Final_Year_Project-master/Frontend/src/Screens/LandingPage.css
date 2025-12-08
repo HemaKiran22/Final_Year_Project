@@ -792,3 +792,247 @@ body {
   font-size: 0.9rem;
   color: #94a3b8;
 }
+
+/* Live Stats Section */
+.live-stats {
+  padding: 80px 20px;
+  background: linear-gradient(135deg, #f5f7ff 0%, #e1eafc 100%);
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 30px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.live-stat-card {
+  background: white;
+  padding: 40px 30px;
+  border-radius: 20px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+  text-align: center;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.live-stat-card:hover {
+  transform: translateY(-10px);
+  box-shadow: 0 15px 40px rgba(102, 126, 234, 0.15);
+}
+
+.live-stat-card h3 {
+  font-size: 48px;
+  font-weight: 800;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin: 15px 0 10px;
+}
+
+.live-stat-card p {
+  font-size: 18px;
+  color: #666;
+  margin-bottom: 10px;
+}
+
+.stat-trend {
+  display: inline-block;
+  padding: 6px 12px;
+  background: #e0f2fe;
+  color: #0284c7;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+/* Success Stories Carousel */
+.success-stories {
+  padding: 80px 20px;
+  background: white;
+}
+
+.stories-carousel {
+  max-width: 800px;
+  margin: 0 auto;
+  position: relative;
+}
+
+.story-card {
+  background: linear-gradient(135deg, #fff 0%, #f8f9ff 100%);
+  border-radius: 20px;
+  padding: 40px;
+  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.1);
+  border: 2px solid #e8e8ff;
+}
+
+.story-header {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  margin-bottom: 30px;
+}
+
+.story-avatar {
+  font-size: 64px;
+  width: 80px;
+  height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 50%;
+}
+
+.story-info h3 {
+  font-size: 24px;
+  color: #333;
+  margin-bottom: 5px;
+}
+
+.story-role {
+  color: #667eea;
+  font-weight: 600;
+  margin-bottom: 5px;
+}
+
+.story-community {
+  color: #999;
+  font-size: 14px;
+}
+
+.story-quote {
+  margin-bottom: 30px;
+}
+
+.story-quote p {
+  font-size: 18px;
+  line-height: 1.8;
+  color: #555;
+  font-style: italic;
+}
+
+.story-impact {
+  display: flex;
+  justify-content: space-around;
+  padding-top: 20px;
+  border-top: 2px solid #e8e8ff;
+}
+
+.impact-item {
+  text-align: center;
+}
+
+.impact-item strong {
+  display: block;
+  font-size: 24px;
+  color: #667eea;
+  margin-bottom: 5px;
+}
+
+.impact-item span {
+  font-size: 14px;
+  color: #999;
+}
+
+.carousel-dots {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 30px;
+}
+
+.carousel-dots .dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #ddd;
+  border: none;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.carousel-dots .dot.active {
+  width: 30px;
+  border-radius: 6px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+/* Video Modal */
+.video-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  padding: 20px;
+}
+
+.video-modal {
+  background: white;
+  border-radius: 20px;
+  padding: 40px;
+  max-width: 800px;
+  width: 100%;
+  position: relative;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.close-modal {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background: #f0f0f0;
+  border: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  font-size: 24px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.close-modal:hover {
+  background: #667eea;
+  color: white;
+  transform: rotate(90deg);
+}
+
+.video-container {
+  margin: 20px 0;
+}
+
+.demo-placeholder {
+  cursor: pointer;
+  transition: transform 0.3s ease;
+}
+
+.demo-placeholder:hover {
+  transform: scale(1.02);
+}
+
+@media (max-width: 768px) {
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .story-card {
+    padding: 30px 20px;
+  }
+  
+  .story-header {
+    flex-direction: column;
+    text-align: center;
+  }
+  
+  .video-modal {
+    padding: 20px;
+  }
+}
+
