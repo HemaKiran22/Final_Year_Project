@@ -30,6 +30,7 @@ const Dashboard = () => {
     seats: 1,
     community: '',
     price: 0,
+    vehicleType: 'car',
   });
   const [userProfile, setUserProfile] = useState(null);
   const [activeMenu, setActiveMenu] = useState('dashboard');
@@ -428,6 +429,7 @@ const Dashboard = () => {
         createdAt: new Date(),
         price: Number(newRide.price),
         seats: Number(newRide.seats),
+        vehicleType: newRide.vehicleType,
         isCompleted: false,
         status: 'Pending',
         passengers: [],
@@ -440,6 +442,7 @@ const Dashboard = () => {
         seats: 1,
         community: '',
         price: 0,
+        vehicleType: 'car',
       });
       setShowPostRideForm(false);
     } catch (e) {
@@ -1203,6 +1206,7 @@ const Dashboard = () => {
                       seats: lastRide.seats || 1,
                       community: lastRide.community || '',
                       price: lastRide.price || 0,
+                      vehicleType: lastRide.vehicleType || 'car',
                     });
                     setShowPostRideForm(true);
                   }}>
@@ -1363,8 +1367,26 @@ const Dashboard = () => {
                 </div>
               </div>
               <div className="form-group">
+                <label>Vehicle Type:</label>
+                <select name="vehicleType" value={newRide.vehicleType} onChange={handleInputChange} required>
+                  <option value="car">Car (Max 4 seats)</option>
+                  <option value="auto">Auto (Max 3 seats)</option>
+                </select>
+              </div>
+              <div className="form-group">
                 <label>Seats Available:</label>
-                <input type="number" name="seats" value={newRide.seats} onChange={handleInputChange} min="1" required />
+                <input 
+                  type="number" 
+                  name="seats" 
+                  value={newRide.seats} 
+                  onChange={handleInputChange} 
+                  min="1" 
+                  max={newRide.vehicleType === 'car' ? 4 : 3}
+                  required 
+                />
+                <small style={{ color: '#666', fontSize: '12px' }}>
+                  Max {newRide.vehicleType === 'car' ? 4 : 3} seats for {newRide.vehicleType}
+                </small>
               </div>
               <div className="form-group">
                 <label>Price:</label>

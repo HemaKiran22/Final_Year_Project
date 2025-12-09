@@ -1,5 +1,5 @@
 import React from 'react';
-import { FaUsers, FaCar, FaMapMarkerAlt, FaClock, FaRupeeSign } from 'react-icons/fa';
+import { FaUsers, FaCar, FaMapMarkerAlt, FaClock, FaRupeeSign, FaTaxi } from 'react-icons/fa';
 
 const ClusteredRideGroups = ({ clusters, stats, onJoinGroup, joiningGroupId }) => {
   if (!clusters || clusters.length === 0) {
@@ -45,19 +45,28 @@ const ClusteredRideGroups = ({ clusters, stats, onJoinGroup, joiningGroupId }) =
 
       {/* Ride Groups */}
       <div className="ride-groups-grid">
-        {clusters.map((group) => (
-          <div key={group.groupId} className="ride-group-card">
-            <div className="group-header">
-              <div className="group-id">
-                <FaCar />
-                <span>Group {group.groupId}</span>
+        {clusters.map((group) => {
+          // Get vehicle icon based on vehicle type
+          const vehicleIcon = group.vehicleType === 'auto' ? <FaTaxi /> : <FaCar />;
+          const vehicleLabel = group.vehicleType === 'auto' ? 'Auto' : 'Car';
+          
+          return (
+            <div key={group.groupId} className="ride-group-card">
+              <div className="group-header">
+                <div className="group-id">
+                  {vehicleIcon}
+                  <span>Group {group.groupId}</span>
+                </div>
+                <div className="vehicle-type">
+                  <span className="vehicle-badge">{vehicleLabel}</span>
+                </div>
               </div>
+
               <div className="members-count">
                 <FaUsers />
                 <span>{group.members}/{group.capacity} seats</span>
                 {group.isFull && <span className="full-chip">Full</span>}
               </div>
-            </div>
 
             <div className="group-route">
               <FaMapMarkerAlt className="route-icon" />
@@ -107,8 +116,9 @@ const ClusteredRideGroups = ({ clusters, stats, onJoinGroup, joiningGroupId }) =
                     : 'Join This Group'}
               </button>
             )}
-          </div>
-        ))}
+            </div>
+          );
+        })}
       </div>
 
       <style jsx>{`
@@ -202,12 +212,31 @@ const ClusteredRideGroups = ({ clusters, stats, onJoinGroup, joiningGroupId }) =
           font-size: 1.1rem;
         }
 
+        .vehicle-type {
+          display: flex;
+          align-items: center;
+          gap: 5px;
+        }
+
+        .vehicle-badge {
+          background: #e8f0ff;
+          color: #667eea;
+          padding: 4px 10px;
+          border-radius: 12px;
+          font-size: 0.8rem;
+          font-weight: 600;
+          display: flex;
+          align-items: center;
+          gap: 4px;
+        }
+
         .members-count {
           display: flex;
           align-items: center;
           gap: 5px;
           color: #666;
           font-size: 0.9rem;
+          margin-top: 10px;
         }
 
         .full-chip {

@@ -197,15 +197,30 @@ export function clusterRides(rides, options = {}) {
   return finalClusters;
 }
 
-// Calculate capacity for a cluster based on seats provided by rides.
-// If no seats are provided, fall back to the configured maxGroupSize.
+// Get max capacity based on vehicle type
+function getVehicleCapacity(vehicleType) {
+  const capacities = {
+    car: 4,
+    auto: 3,
+  };
+  return capacities[vehicleType] || 4;
+}
+
+// Calculate capacity for a cluster based on vehicle type
 function getClusterCapacity(cluster, fallback) {
+  if (!cluster || cluster.length === 0) return fallback || 4;
+  
+  // Use the first ride's vehicle type to determine capacity
+  const vehicleType = cluster[0].vehicleType || 'car';
+  const vehicleCapacity = getVehicleCapacity(vehicleType);
+  
+  // Sum of actual seats posted
   const totalSeats = cluster.reduce((sum, r) => {
     const seats = Number(r.seats);
     return sum + (Number.isFinite(seats) ? seats : 0);
   }, 0);
-  if (totalSeats > 0) return totalSeats;
-  return fallback || cluster.length || 1;
+  
+  return totalSeats > 0 ? totalSeats : fallback || vehicleCapacity;
 }
 
 // Count passengers already on a ride
@@ -223,53 +238,67 @@ function getRemainingSeats(cluster) {
   return Math.max(0, totalSeats - taken);
 }
 
-// Split a cluster into chunks that do not exceed capacity
+// Split a cluster into vehicle-sized chunks (max 4 for car, 3 for auto)
 function splitByCapacity(cluster, fallbackCapacity) {
-  const capacity = getClusterCapacity(cluster, fallbackCapacity);
-  if (!capacity || capacity <= 0) return [cluster];
-  if (cluster.length <= capacity) return [cluster];
+  if (!cluster || cluster.length === 0) return [];
+  
+  // Get vehicle type from first ride
+  const vehicleType = cluster[0].vehicleType || 'car';
+  const vehicleCapacity = getVehicleCapacity(vehicleType);
+  
+  if (cluster.length <= vehicleCapacity) return [cluster];
 
   const chunks = [];
-  for (let i = 0; i < cluster.length; i += capacity) {
-    chunks.push(cluster.slice(i, i + capacity));
+  for (let i = 0; i < cluster.length; i += vehicleCapacity) {
+    chunks.push(cluster.slice(i, i + vehicleCapacity));
   }
   return chunks;
 }
 
 /**
- * Format cluster results for display
+ * Format cluster results for display with vehicle type info
  */
 export function formatClusterResults(clusters) {
-  return clusters.map((cluster, idx) => ({
-    groupId: idx + 1,
-    route: `${cluster[0].community} → ${cluster[0].destination}`,
-    members: getTotalPassengers(cluster),
-    capacity: getClusterCapacity(cluster, cluster.length),
-    time: cluster[0].time,
-    date: cluster[0].date,
-    remainingSeats: getRemainingSeats(cluster),
-    rideOptions: cluster.map(r => {
-      const seats = Number(r.seats) || 0;
-      const passengers = getPassengerCount(r);
-      return {
-        rideId: r.id,
-        driverId: r.driverId,
-        driverName: r.driverName || r.userName || 'Driver',
-        seatsTotal: seats,
-        seatsRemaining: Math.max(0, seats - passengers),
-        passengers,
-        pickupLocation: r.pickupLocation || r.community,
-      };
-    }),
-    riders: cluster.map(r => ({
-      name: r.userName || 'User',
-      userId: r.userId,
-      pickupLocation: r.pickupLocation || r.community
-    })),
-    estimatedCost: calculateGroupCost(cluster),
-    costPerPerson: calculateGroupCost(cluster) / cluster.length,
-    isFull: getRemainingSeats(cluster) <= 0
-  }));
+  return clusters.map((cluster, idx) => {
+    const vehicleType = cluster[0]?.vehicleType || 'car';
+    const vehicleCapacity = getVehicleCapacity(vehicleType);
+    
+    return {
+      groupId: idx + 1,
+      route: `${cluster[0].community} → ${cluster[0].destination}`,
+      members: cluster.length,
+      passengers: getTotalPassengers(cluster),
+      capacity: vehicleCapacity,
+      vehicleType: vehicleType,
+      vehicleLabel: vehicleType === 'car' ? 'Car' : 'Auto',
+      time: cluster[0].time,
+      date: cluster[0].date,
+      remainingSeats: Math.max(0, vehicleCapacity - getTotalPassengers(cluster)),
+      rideOptions: cluster.map(r => {
+        const seats = Number(r.seats) || 0;
+        const passengers = getPassengerCount(r);
+        const rideVehicleType = r.vehicleType || 'car';
+        return {
+          rideId: r.id,
+          driverId: r.driverId,
+          driverName: r.driverName || r.userName || 'Driver',
+          vehicleType: rideVehicleType,
+          seatsTotal: seats,
+          seatsRemaining: Math.max(0, seats - passengers),
+          passengers,
+          pickupLocation: r.pickupLocation || r.community,
+        };
+      }),
+      riders: cluster.map(r => ({
+        name: r.userName || 'User',
+        userId: r.userId,
+        pickupLocation: r.pickupLocation || r.community
+      })),
+      estimatedCost: calculateGroupCost(cluster),
+      costPerPerson: calculateGroupCost(cluster) / Math.max(1, cluster.length),
+      isFull: Math.max(0, vehicleCapacity - getTotalPassengers(cluster)) <= 0
+    };
+  });
 }
 
 /**
