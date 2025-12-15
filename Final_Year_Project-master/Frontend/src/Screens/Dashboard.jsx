@@ -56,6 +56,30 @@ const Dashboard = () => {
   const [achievements, setAchievements] = useState([]);
   const [currentStreak, setCurrentStreak] = useState(0);
   const [showShortcutsHelp, setShowShortcutsHelp] = useState(false);
+  const [showTour, setShowTour] = useState(false);
+  const [tourStep, setTourStep] = useState(0);
+  const tourSteps = [
+    {
+      title: 'Explore your dashboard',
+      body: 'See quick stats, notifications, and shortcuts to post or join rides.',
+      targetMenu: 'dashboard',
+    },
+    {
+      title: 'Check or post rides',
+      body: 'Open My Rides to confirm rides, chat with co-riders, or post a new one.',
+      targetMenu: 'rides',
+    },
+    {
+      title: 'Join AI ride groups',
+      body: 'Ride Groups clusters nearby riders so you can join the best match fast.',
+      targetMenu: 'groups',
+    },
+    {
+      title: 'Stay social & earn badges',
+      body: 'Visit Society Feed to share updates and Leaderboard to track your impact.',
+      targetMenu: 'leaderboard',
+    },
+  ];
   const shownNotifIdsRef = useRef(new Set());
 
   const navigate = useNavigate();
@@ -76,6 +100,14 @@ const Dashboard = () => {
     id: 'google-map-script',
     googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '',
   });
+
+  // Start tour for first-time visitors
+  useEffect(() => {
+    const hasSeenTour = localStorage.getItem('dashboardTourSeen');
+    if (!hasSeenTour) {
+      setShowTour(true);
+    }
+  }, []);
 
   useEffect(() => {
     const savedTheme = localStorage.getItem('cc-theme');
@@ -723,6 +755,29 @@ const Dashboard = () => {
     return commonDestinations[destination] || { lat: 12.9716, lng: 77.5946 };
   };
 
+  const handleSkipTour = () => {
+    localStorage.setItem('dashboardTourSeen', '1');
+    setShowTour(false);
+  };
+
+  const handleTourPrev = () => {
+    setTourStep((prev) => Math.max(0, prev - 1));
+  };
+
+  const handleTourNext = () => {
+    if (tourStep < tourSteps.length - 1) {
+      const nextStep = tourStep + 1;
+      setTourStep(nextStep);
+      const targetMenu = tourSteps[nextStep]?.targetMenu;
+      if (targetMenu === 'leaderboard') navigate('/leaderboard');
+      if (targetMenu === 'feed') navigate('/societyfeed');
+      if (targetMenu === 'rides' || targetMenu === 'groups' || targetMenu === 'dashboard') setActiveMenu(targetMenu);
+    } else {
+      localStorage.setItem('dashboardTourSeen', '1');
+      setShowTour(false);
+    }
+  };
+
   const renderContent = () => {
     switch (activeMenu) {
       case 'messages':
@@ -1304,6 +1359,32 @@ const Dashboard = () => {
       
       {/* Main Content */}
       <div className="main-content">
+        {showTour && (
+          <div className="tour-overlay">
+            <div className="tour-card">
+              <div className="tour-header">
+                <span>Quick tour for new members</span>
+                <button className="tour-skip" onClick={handleSkipTour}>Skip</button>
+              </div>
+              <div className="tour-body">
+                <p className="tour-step-label">Step {tourStep + 1} of {tourSteps.length}</p>
+                <h3>{tourSteps[tourStep].title}</h3>
+                <p className="tour-text">{tourSteps[tourStep].body}</p>
+                <div className="tour-dots">
+                  {tourSteps.map((_, idx) => (
+                    <span key={idx} className={`tour-dot ${idx === tourStep ? 'active' : ''}`}></span>
+                  ))}
+                </div>
+              </div>
+              <div className="tour-actions">
+                <button onClick={handleTourPrev} disabled={tourStep === 0} className="tour-btn secondary">Back</button>
+                <button onClick={handleTourNext} className="tour-btn primary">
+                  {tourStep === tourSteps.length - 1 ? 'Finish' : 'Next'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
         {/* Header */}
         <div className="header">
           <h1 className="page-title">

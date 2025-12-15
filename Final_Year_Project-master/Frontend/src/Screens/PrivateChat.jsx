@@ -23,9 +23,12 @@ const PrivateChat = () => {
   const [chatMeta, setChatMeta] = useState(null);
   const [ride, setRide] = useState(null);
   const [accepting, setAccepting] = useState(false);
+  const [completing, setCompleting] = useState(false);
   const [showRatingModal, setShowRatingModal] = useState(false);
   const [ratingTargetUserId, setRatingTargetUserId] = useState(null);
   const [ratingValue, setRatingValue] = useState(5);
+  const [submittingRating, setSubmittingRating] = useState(false);
+  const [ratingSuccess, setRatingSuccess] = useState(false);
   const navigate = useNavigate();
   const messagesEndRef = useRef(null);
 
@@ -159,8 +162,36 @@ const PrivateChat = () => {
         isCompleted: true,
       });
 
-      // Create rating notifications both ways when accepted from chat
+      // Don't show rating yet - wait for ride to be completed
+    } catch (error) {
+      console.error('Error accepting ride from chat:', error);
+    } finally {
+      setAccepting(false);
+    }
+  };
+
+  // Complete ride and show rating modal
+  const completeRide = async () => {
+    if (!auth.currentUser || !chatMeta || !ride) {
+      console.warn('completeRide: Missing data', { auth: !!auth.currentUser, chatMeta: !!chatMeta, ride: !!ride });
+      return;
+    }
+    setCompleting(true);
+    try {
+      const thisUserId = auth.currentUser.uid;
       const otherUserId = chatMeta?.participants?.find((p) => p && p !== thisUserId);
+      
+      console.log('Completing ride for:', thisUserId, 'Other user:', otherUserId);
+      
+      // Mark ride as completed
+      const rideRef = doc(db, "rides", ride.id);
+      await updateDoc(rideRef, {
+        isCompleted: true,
+      });
+
+      console.log('Ride marked as completed');
+
+      // Create rating notifications for both users
       if (otherUserId) {
         await addDoc(collection(db, 'notifications'), {
           toUserId: otherUserId,
@@ -180,16 +211,18 @@ const PrivateChat = () => {
           createdAt: new Date(),
           read: false,
         });
+        console.log('Showing rating modal');
         setRatingTargetUserId(otherUserId);
         setRatingValue(5);
         setShowRatingModal(true);
+      } else {
+        console.warn('No other user found in chat');
       }
-      
-      // Delay navigating to dashboard until after rating modal
     } catch (error) {
-      console.error('Error accepting ride from chat:', error);
+      console.error('Error completing ride:', error);
+      alert('Error: ' + error.message);
     } finally {
-      setAccepting(false);
+      setCompleting(false);
     }
   };
 
@@ -227,9 +260,15 @@ const PrivateChat = () => {
 
       {ride && (
         <div className="chat-actions">
-          <button disabled={accepting} onClick={acceptRide}>
-            {accepting ? 'Accepting...' : '✅ Accept Ride & Go to Dashboard'}
-          </button>
+          {!chatMeta?.acceptedBy?.includes(auth.currentUser?.uid) ? (
+            <button disabled={accepting} onClick={acceptRide} className="accept-btn">
+              {accepting ? 'Accepting...' : '✅ Accept Ride'}
+            </button>
+          ) : (
+            <button disabled={completing} onClick={completeRide} className="complete-btn">
+              {completing ? 'Completing...' : '🏁 Ride Complete - Rate & Finish'}
+            </button>
+          )}
         </div>
       )}
 
@@ -239,18 +278,29 @@ const PrivateChat = () => {
             <button className="close-btn" onClick={() => { setShowRatingModal(false); navigate('/dashboard'); }}>
               ×
             </button>
-            <h2>Rate Your Co-rider</h2>
-            <div className="form-group">
-              <label>Rating (1-5):</label>
-              <input
-                type="number"
-                min="1"
-                max="5"
-                value={ratingValue}
-                onChange={(e) => setRatingValue(e.target.value)}
-              />
-            </div>
+            
+            {ratingSuccess ? (
+              <div className="rating-success">
+                <div className="success-icon">✅</div>
+                <h2>Rating Submitted!</h2>
+                <p>You successfully rated your co-rider ⭐</p>
+                <p>Redirecting to Dashboard...</p>
+              </div>
+            ) : (
+              <>
+                <h2>Rate Your Co-rider</h2>
+                <div className="form-group">
+                  <label>Rating (1-5):</label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="5"
+                    value={ratingValue}
+                    onChange={(e) => setRatingValue(e.target.value)}
+                  />
+                </div>
             <button className="post-ride-submit-btn" onClick={async () => {
+              setSubmittingRating(true);
               try {
                 if (!ratingTargetUserId || !Number.isFinite(Number(ratingValue))) return;
                 const ratedUserRef = doc(db, 'users', ratingTargetUserId);
@@ -263,14 +313,27 @@ const PrivateChat = () => {
                   averageRating: newAvg,
                   totalRatings: prevCount + 1,
                 });
+                console.log('Rating submitted successfully');
+                setRatingSuccess(true);
+                
+                // Show success message for 2 seconds then redirect
+                setTimeout(() => {
+                  setShowRatingModal(false);
+                  setRatingTargetUserId(null);
+                  setRatingSuccess(false);
+                  navigate('/dashboard');
+                }, 2000);
               } catch (e) {
                 console.error('Failed to submit rating', e);
+                alert('Error submitting rating: ' + e.message);
               } finally {
-                setShowRatingModal(false);
-                setRatingTargetUserId(null);
-                navigate('/dashboard');
+                setSubmittingRating(false);
               }
-            }}>Submit Rating</button>
+            }} disabled={submittingRating}>
+              {submittingRating ? 'Submitting...' : '⭐ Submit Rating'}
+            </button>
+              </>
+            )}
           </div>
         </div>
       )}

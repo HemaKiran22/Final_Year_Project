@@ -883,3 +883,116 @@ body::before {
   box-shadow: var(--shadow-light);
   transform: translateY(-1px);
 }
+
+/* Onboarding tour */
+.tour-overlay {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  z-index: 50;
+  max-width: 360px;
+  width: 92%;
+}
+
+.tour-card {
+  background: var(--card-bg);
+  border: 1px solid var(--light-gray);
+  box-shadow: var(--shadow-dark);
+  border-radius: 16px;
+  padding: 18px;
+}
+
+.tour-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: 600;
+  color: var(--primary);
+}
+
+.tour-skip {
+  background: transparent;
+  border: none;
+  color: var(--gray);
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.tour-body {
+  margin-top: 10px;
+}
+
+.tour-step-label {
+  font-size: 13px;
+  color: var(--gray);
+  margin-bottom: 6px;
+}
+
+.tour-body h3 {
+  margin: 6px 0;
+  color: var(--dark);
+}
+
+.tour-text {
+  color: var(--gray);
+  margin-bottom: 12px;
+}
+
+.tour-dots {
+  display: flex;
+  gap: 6px;
+}
+
+.tour-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--light-gray);
+}
+
+.tour-dot.active {
+  background: var(--primary);
+  transform: scale(1.1);
+}
+
+.tour-actions {
+  margin-top: 12px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.tour-btn {
+  padding: 8px 14px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.tour-btn.secondary {
+  background: transparent;
+  border-color: var(--light-gray);
+  color: var(--dark);
+}
+
+.tour-btn.primary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #fff;
+  border: none;
+}
+
+.tour-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+@media (max-width: 768px) {
+  .tour-overlay {
+    position: fixed;
+    top: auto;
+    bottom: 16px;
+    right: 50%;
+    transform: translateX(50%);
+  }
+}

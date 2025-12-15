@@ -67,6 +67,42 @@
   cursor: pointer;
 }
 
+/* Rating Success Message */
+.rating-success {
+  text-align: center;
+  padding: 40px 20px;
+}
+
+.success-icon {
+  font-size: 60px;
+  margin-bottom: 20px;
+  animation: scaleIn 0.5s ease-in-out;
+}
+
+@keyframes scaleIn {
+  0% {
+    transform: scale(0);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.rating-success h2 {
+  color: #28a745;
+  margin: 15px 0;
+  font-size: 24px;
+}
+
+.rating-success p {
+  color: #666;
+  margin: 8px 0;
+  font-size: 16px;
+}
+
 /* Mobile responsiveness */
 @media (max-width: 768px) {
   .chat-window {
