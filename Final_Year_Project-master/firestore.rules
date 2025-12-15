@@ -64,5 +64,24 @@ service cloud.firestore {
         allow create, read: if request.auth != null && get(/databases/$(database)/documents/chats/$(chatId)).data.participants.hasAny([request.auth.uid]);
       }
     }
+
+    // --- Society Feed ---
+    match /feed/{feedId} {
+      // Anyone logged in can read feed posts
+      allow read: if request.auth != null;
+      
+      // Anyone logged in can create a post
+      allow create: if request.auth != null
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.username is string
+        && request.resource.data.likes is list
+        && request.resource.data.comments is list;
+      
+      // Only post creator can update (for likes and comments)
+      allow update: if request.auth != null;
+      
+      // Only post creator can delete their own post
+      allow delete: if request.auth != null && resource.data.userId == request.auth.uid;
+    }
   }
 }
