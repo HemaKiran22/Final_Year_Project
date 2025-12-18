@@ -4,15 +4,16 @@ import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 
-// Your web app's Firebase configuration
+// Your web app's Firebase configuration (loaded from Vite env vars)
+// Ensure these are defined in a .env file locally and in Vercel Project Settings
 const firebaseConfig = {
-  apiKey: "AIzaSyCCDCZz07zJAi-qhqsf4nQzyePNoynh8zY",
-  authDomain: "colonycarpool-3d543.firebaseapp.com",
-  projectId: "colonycarpool-3d543",
-  storageBucket: "colonycarpool-3d543.firebasestorage.app",
-  messagingSenderId: "96179573561",
-  appId: "1:96179573561:web:87eb1de9825800b0a4cee8",
-  measurementId: "G-YRLHSLTWX7"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
 };
 
 // Initialize Firebase
