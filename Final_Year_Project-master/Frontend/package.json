@@ -14,7 +14,7 @@
   },
   "dependencies": {
     "@react-google-maps/api": "^2.20.7",
-    "firebase": "^12.2.1",
+    "firebase": "11.0.1",
     "framer-motion": "^12.23.15",
     "lucide-react": "^0.544.0",
     "react": "^19.1.1",
