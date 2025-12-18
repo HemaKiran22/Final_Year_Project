@@ -23,3 +23,31 @@ How to demo:
 - Open Profile → Trust & Safety → Review the meter and breakdown
 
 See the detailed explainer at [docs/XAI_Explainability.md](docs/XAI_Explainability.md).
+
+## Environment Variables
+
+This project uses Vite. Only variables prefixed with `VITE_` are exposed to the browser.
+
+Add a `.env` file in the `Frontend/` folder (or use Vercel → Project Settings → Environment Variables) with:
+
+```
+VITE_FIREBASE_API_KEY=...
+VITE_FIREBASE_AUTH_DOMAIN=...
+VITE_FIREBASE_PROJECT_ID=...
+VITE_FIREBASE_STORAGE_BUCKET=...
+VITE_FIREBASE_MESSAGING_SENDER_ID=...
+VITE_FIREBASE_APP_ID=...
+VITE_FIREBASE_MEASUREMENT_ID=...
+```
+
+A template is provided at `.env.example`. For local dev:
+
+```
+cp .env.example .env   # Windows PowerShell: Copy-Item .env.example .env
+```
+
+On Vercel:
+- Framework Preset: Vite
+- Root Directory: `Frontend`
+- Build Command: `npm run build`
+- Output Directory: `dist`
