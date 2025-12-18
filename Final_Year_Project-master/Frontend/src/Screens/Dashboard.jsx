@@ -48,6 +48,7 @@ const Dashboard = () => {
   const [clusteringStats, setClusteringStats] = useState(null);
   const [showClusterView, setShowClusterView] = useState(false);
   const [joiningGroupId, setJoiningGroupId] = useState(null);
+  const [pendingChatRideId, setPendingChatRideId] = useState(null);
   const [theme, setTheme] = useState('light');
   const [rideFilters, setRideFilters] = useState({ destination: '', date: '', status: 'all', seatsMin: 0 });
   const [suggestedRides, setSuggestedRides] = useState([]);
@@ -224,25 +225,42 @@ const Dashboard = () => {
     if (!userId) return;
 
     const myRidesRef = collection(db, "rides");
-    const myRidesQuery = query(myRidesRef, where("driverId", "==", userId));
-    const unsubscribeMyRides = onSnapshot(myRidesQuery, (snapshot) => {
-      const fetchedMyRides = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-      setMyRides(fetchedMyRides);
-      
-      // Update suggested rides based on user's community
-      if (fetchedMyRides.length > 0) {
-        const userCommunity = fetchedMyRides[0].community;
-        calculateSuggestedRides(userCommunity);
+    const driverQueryRef = query(myRidesRef, where("driverId", "==", userId));
+    const passengerQueryRef = query(myRidesRef, where("passengers", "array-contains", userId));
+
+    // Collect results from both queries and merge by id
+    let driverUnsub = () => {};
+    let passengerUnsub = () => {};
+
+    const mergeAndSet = (driverDocs, passengerDocs) => {
+      const map = new Map();
+      driverDocs.forEach(d => map.set(d.id, d));
+      passengerDocs.forEach(d => map.set(d.id, d));
+      const merged = Array.from(map.values());
+      setMyRides(merged);
+
+      if (merged.length > 0) {
+        const userCommunity = merged[0].community;
+        if (userCommunity) calculateSuggestedRides(userCommunity);
       }
-      
-      // Calculate weekly/monthly stats and achievements
-      calculateStatsAndAchievements(fetchedMyRides);
+
+      calculateStatsAndAchievements(merged);
+    };
+
+    let driverDocs = [];
+    let passengerDocs = [];
+
+    driverUnsub = onSnapshot(driverQueryRef, (snapshot) => {
+      driverDocs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      mergeAndSet(driverDocs, passengerDocs);
     });
 
-    return () => unsubscribeMyRides();
+    passengerUnsub = onSnapshot(passengerQueryRef, (snapshot) => {
+      passengerDocs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      mergeAndSet(driverDocs, passengerDocs);
+    });
+
+    return () => { try { driverUnsub(); } catch {} try { passengerUnsub(); } catch {} };
   }, [userId, allRides]);
 
   useEffect(() => {
@@ -254,8 +272,17 @@ const Dashboard = () => {
       }));
       setAllRides(fetchedRides);
       
-      // Auto-cluster rides whenever they change
-      performClustering(fetchedRides);
+      // Auto-cluster only active (future, non-completed) rides
+      const now = new Date();
+      const activeRides = fetchedRides.filter(r => {
+        // Exclude completed rides
+        if (r.status === 'Completed') return false;
+        // If date/time missing, treat as active (draft/upcoming)
+        if (!r.date || !r.time) return true;
+        const rideDateTime = new Date(`${r.date} ${r.time}`);
+        return rideDateTime > now;
+      });
+      performClustering(activeRides);
       
       // Check for ride reminders
       checkUpcomingRides(fetchedRides);
@@ -433,7 +460,7 @@ const Dashboard = () => {
     });
 
     // Format for display
-    const formatted = formatClusterResults(clusters);
+    const formatted = formatClusterResults(clusters, { timeWindowMinutes: 15, proximityKm: 2 });
     setClusteredGroups(formatted);
 
     // Calculate stats
@@ -504,7 +531,7 @@ const Dashboard = () => {
       console.error('Failed to mark notification as read', e);
     }
     if (latest.chatId) {
-      navigate(`/privatechat/${latest.chatId}`);
+      navigate(`/groupchat/${latest.chatId}`);
     }
   };
 
@@ -612,56 +639,90 @@ const Dashboard = () => {
       return;
     }
 
-    const candidateRide = group?.rideOptions?.find(r => r.seatsRemaining > 0 && r.rideId);
-    if (!candidateRide) {
-      alert('This group is full or no ride is available.');
+    // Prevent joining if current user is already in this group (as driver or passenger)
+    const alreadyMember = (
+      Array.isArray(group?.memberUserIds) && group.memberUserIds.includes(userId)
+    ) || (
+      Array.isArray(group?.rideOptions) && group.rideOptions.some(o => o.driverId === userId)
+    );
+    if (alreadyMember) {
+      alert('You are already part of this group.');
       return;
     }
 
+    // Prefer joining an existing ride with seats; if none, create a shared ride (driverless)
+    let candidateRide = group?.rideOptions?.find(r => r.seatsRemaining > 0 && r.rideId);
+
     setJoiningGroupId(group.groupId);
     try {
-      await runTransaction(db, async (transaction) => {
-        const rideRef = doc(db, 'rides', candidateRide.rideId);
-        const rideSnap = await transaction.get(rideRef);
-        if (!rideSnap.exists()) {
-          throw new Error('Ride no longer exists.');
-        }
+      // If no suitable ride exists, create a shared (driverless) ride for this group
+      if (!candidateRide) {
+        const [community, destination] = (group.route || '').split(' → ').map(s => (s || '').trim());
+        const newRide = {
+          driverId: null,
+          driverName: 'Shared Ride',
+          isShared: true,
+          community: community || 'Community',
+          destination: destination || 'Destination',
+          date: group.date,
+          time: group.time,
+          vehicleType: group.vehicleType || 'car',
+          seats: group.capacity || 3,
+          price: group.estimatedCost || 0,
+          status: 'Forming',
+          passengers: [userId],
+          createdAt: new Date(),
+          createdBy: userId,
+        };
 
-        const rideData = rideSnap.data();
-        const seats = Number(rideData.seats) || 0;
-        const passengersArr = Array.isArray(rideData.passengers) ? rideData.passengers : [];
+        const created = await addDoc(collection(db, 'rides'), newRide);
+        alert('You have successfully joined the group.');
+        setPendingChatRideId(created.id);
+      } else {
+        await runTransaction(db, async (transaction) => {
+          const rideRef = doc(db, 'rides', candidateRide.rideId);
+          const rideSnap = await transaction.get(rideRef);
+          if (!rideSnap.exists()) {
+            throw new Error('Ride no longer exists.');
+          }
 
-        if (passengersArr.includes(userId)) {
-          throw new Error('You already joined this ride.');
-        }
+          const rideData = rideSnap.data();
+          const seats = Number(rideData.seats) || 0;
+          const passengersArr = Array.isArray(rideData.passengers) ? rideData.passengers : [];
 
-        if (seats > 0 && passengersArr.length >= seats) {
-          throw new Error('No seats left in this ride.');
-        }
+          if (passengersArr.includes(userId)) {
+            throw new Error('You already joined this ride.');
+          }
 
-        transaction.update(rideRef, {
-          passengers: [...passengersArr, userId],
-        });
-      });
+          if (seats > 0 && passengersArr.length >= seats) {
+            throw new Error('No seats left in this ride.');
+          }
 
-      // Best-effort notify driver that someone joined their ride
-      if (candidateRide.driverId) {
-        try {
-          await addDoc(collection(db, 'notifications'), {
-            toUserId: candidateRide.driverId,
-            fromUserId: userId,
-            rideId: candidateRide.rideId,
-            type: 'join',
-            createdAt: new Date(),
-            read: false,
-            message: `${userName} joined your ride group.`
+          transaction.update(rideRef, {
+            passengers: [...passengersArr, userId],
           });
-        } catch (notifyErr) {
-          console.warn('Notification write skipped (permissions?):', notifyErr);
-        }
-      }
+        });
 
-      alert('Joined the group!');
+        // Best-effort notify the ride creator (if any)
+        if (candidateRide.driverId) {
+          try {
+            await addDoc(collection(db, 'notifications'), {
+              toUserId: candidateRide.driverId,
+              fromUserId: userId,
+              rideId: candidateRide.rideId,
+              type: 'join',
+              createdAt: new Date(),
+              read: false,
+              message: `${userName} joined your ride group.`
+            });
+          } catch (notifyErr) {
+            console.warn('Notification write skipped (permissions?):', notifyErr);
+          }
+        }
+
+        alert('You have successfully joined the group.');
+        setPendingChatRideId(candidateRide.rideId);
+      }
     } catch (error) {
       console.error('Failed to join group:', error);
       const fallback = error?.code === 'permission-denied'
@@ -736,6 +797,13 @@ const Dashboard = () => {
             </button>
           </>
         )}
+        <button 
+          className="btn btn-secondary"
+          onClick={() => navigate(`/groupchat/${ride.id}`)}
+          style={{ marginLeft: '10px' }}
+        >
+          Group Chat
+        </button>
       </div>
     </div>
   );
@@ -795,11 +863,28 @@ const Dashboard = () => {
               <h2 className="section-title">Optimized Ride Groups</h2>
               <p className="section-subtitle">AI-powered carpooling groups to save money and reduce traffic</p>
             </div>
+            {pendingChatRideId && (
+              <div style={{
+                background: '#eef2ff',
+                border: '1px solid #c7d2fe',
+                padding: '12px 16px',
+                borderRadius: '10px',
+                marginBottom: '12px',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center'
+              }}>
+                <span>You joined the group. Open the group private chat to coordinate.</span>
+                <button className="btn btn-primary" onClick={() => navigate(`/groupchat/${pendingChatRideId}`)}>Group Private Chat</button>
+              </div>
+            )}
             <ClusteredRideGroups 
               clusters={clusteredGroups} 
               stats={clusteringStats}
               onJoinGroup={handleJoinGroup}
               joiningGroupId={joiningGroupId}
+              chatRideId={pendingChatRideId}
+              currentUserId={userId}
             />
           </div>
         );

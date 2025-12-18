@@ -11,6 +11,7 @@ import SocietyFeed from './Screens/SocietyFeed';
 import Leaderboard from './Screens/Leaderboard';
 import RideChatbot from './Screens/RideChatbot';
 import PrivateChat from './Screens/PrivateChat';
+import GroupChat from './Screens/GroupChat';
 import FloatingChatbot from './components/FloatingChatbot';
 
  
@@ -30,6 +31,7 @@ function App() {
         <Route path="/leaderboard" element={<Leaderboard />} />
         <Route path="/aibot" element={<RideChatbot />} />
         <Route path="/privatechat/:chatId" element={<PrivateChat />} />
+        <Route path="/groupchat/:rideId" element={<GroupChat />} />
       </Routes>
       <FloatingChatbot />
     </>

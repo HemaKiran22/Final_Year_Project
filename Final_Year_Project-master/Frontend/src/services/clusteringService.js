@@ -134,6 +134,9 @@ export function clusterRides(rides, options = {}) {
     maxGroupSize = 3,        // Max users per auto/group
     timeWindowMinutes = 15,  // Time compatibility window
     proximityKm = 2,         // Max pickup location distance within community
+    algorithm = 'kmeans',    // 'kmeans' | 'dbscan'
+    epsKm = 1.5,             // neighborhood radius for DBSCAN (km)
+    minPts = 2,              // minimum points to form a DBSCAN cluster
   } = options;
 
   if (!rides || rides.length === 0) return [];
@@ -175,15 +178,20 @@ export function clusterRides(rides, options = {}) {
       }
     });
 
-    // Step 3: Apply K-Means within each time group
+    // Step 3: Apply spatial clustering within each time group
     timeGroups.forEach(timeGroup => {
       let candidateGroups = [];
 
       if (timeGroup.length <= maxGroupSize) {
         candidateGroups = [timeGroup];
       } else {
-        const numGroups = Math.ceil(timeGroup.length / maxGroupSize);
-        candidateGroups = kMeansClustering(timeGroup, numGroups);
+        if (algorithm === 'dbscan') {
+          const clusters = dbscanClustering(timeGroup, epsKm || proximityKm, minPts);
+          candidateGroups = clusters.length > 0 ? clusters : [timeGroup];
+        } else {
+          const numGroups = Math.ceil(timeGroup.length / maxGroupSize);
+          candidateGroups = kMeansClustering(timeGroup, numGroups);
+        }
       }
 
       // Step 4: Enforce capacity based on available seats (fallback to maxGroupSize)
@@ -195,6 +203,74 @@ export function clusterRides(rides, options = {}) {
   });
 
   return finalClusters;
+}
+
+// --- DBSCAN (spatial) over pickupLat/pickupLng ---
+function dbscanClustering(points, epsKm = 1.5, minPts = 2) {
+  if (!Array.isArray(points) || points.length === 0) return [];
+  const n = points.length;
+  const labels = new Array(n).fill(undefined); // undefined=unvisited, -1=noise, >=0=cluster id
+  let cid = 0;
+
+  const regionQuery = (idx) => {
+    const res = [];
+    const p = points[idx];
+    for (let j = 0; j < n; j++) {
+      if (j === idx) continue;
+      const q = points[j];
+      const d = calculateDistance(
+        p.pickupLat || 0,
+        p.pickupLng || 0,
+        q.pickupLat || 0,
+        q.pickupLng || 0
+      );
+      if (d <= epsKm) res.push(j);
+    }
+    return res;
+  };
+
+  const expandCluster = (idx, neighbors, clusterId) => {
+    labels[idx] = clusterId;
+    const queue = [...neighbors];
+    while (queue.length) {
+      const j = queue.shift();
+      if (labels[j] === -1) {
+        labels[j] = clusterId; // border point
+      }
+      if (labels[j] !== undefined) continue; // already processed
+      labels[j] = clusterId;
+      const nbs = regionQuery(j);
+      if (nbs.length >= minPts) {
+        // density reachable
+        for (const k of nbs) queue.push(k);
+      }
+    }
+  };
+
+  for (let i = 0; i < n; i++) {
+    if (labels[i] !== undefined) continue; // visited
+    const neighbors = regionQuery(i);
+    if (neighbors.length < minPts) {
+      labels[i] = -1; // noise
+    } else {
+      expandCluster(i, neighbors, cid);
+      cid++;
+    }
+  }
+
+  // Collect clusters; keep noise points as singleton clusters to not lose rides
+  const clusters = [];
+  for (let k = 0; k < cid; k++) clusters.push([]);
+  for (let i = 0; i < n; i++) {
+    if (labels[i] >= 0) {
+      clusters[labels[i]].push(points[i]);
+    }
+  }
+  // noise
+  for (let i = 0; i < n; i++) {
+    if (labels[i] === -1) clusters.push([points[i]]);
+  }
+  return clusters.filter(c => c.length > 0);
 }
 
 // Get max capacity based on vehicle type
@@ -258,15 +334,81 @@ function splitByCapacity(cluster, fallbackCapacity) {
 /**
  * Format cluster results for display with vehicle type info
  */
-export function formatClusterResults(clusters) {
+export function formatClusterResults(clusters, explanationsOptions = {}) {
+  const {
+    timeWindowMinutes = 15,
+    proximityKm = 2
+  } = explanationsOptions || {};
+
+  const toMinutes = (t) => {
+    if (!t) return null;
+    const [hh, mm] = String(t).split(':');
+    const h = Number(hh);
+    const m = Number(mm);
+    if (!Number.isFinite(h) || !Number.isFinite(m)) return null;
+    return h * 60 + m;
+  };
+
   return clusters.map((cluster, idx) => {
     const vehicleType = cluster[0]?.vehicleType || 'car';
     const vehicleCapacity = getVehicleCapacity(vehicleType);
+    const members = cluster.length;
+    const co2SavingPct = Math.max(0, Math.round((1 - 1 / Math.max(1, members)) * 100));
+    // Collect member user IDs: drivers and passengers from all rides in cluster
+    const memberIdSet = new Set();
+    for (const r of cluster) {
+      if (r.driverId) memberIdSet.add(r.driverId);
+      if (Array.isArray(r.passengers)) {
+        for (const pid of r.passengers) memberIdSet.add(pid);
+      }
+      if (r.userId) memberIdSet.add(r.userId);
+    }
     
+    // Compute centroid and time stats for explanations
+    const latVals = cluster.map(r => Number(r.pickupLat || 0));
+    const lngVals = cluster.map(r => Number(r.pickupLng || 0));
+    const centroid = {
+      lat: latVals.reduce((a, b) => a + b, 0) / Math.max(1, latVals.length),
+      lng: lngVals.reduce((a, b) => a + b, 0) / Math.max(1, lngVals.length),
+    };
+    const distancesKm = cluster.map(r => calculateDistance(
+      Number(r.pickupLat || 0),
+      Number(r.pickupLng || 0),
+      centroid.lat,
+      centroid.lng
+    ));
+    const avgProximityKm = Number((distancesKm.reduce((a, b) => a + b, 0) / Math.max(1, distancesKm.length)).toFixed(2));
+    const timesMin = cluster.map(r => toMinutes(r.time)).filter(v => v !== null);
+    const timeSpreadMin = timesMin.length > 0 ? Math.max(...timesMin) - Math.min(...timesMin) : 0;
+    const timeWindowOk = timeSpreadMin <= timeWindowMinutes;
+
+    // Counterfactual tip
+    let counterfactual = '';
+    if (!timeWindowOk) {
+      const excess = Math.max(0, timeSpreadMin - timeWindowMinutes);
+      counterfactual = `Shift time by ≤ ${Math.ceil(excess)} min to fit the window.`;
+    } else if (avgProximityKm > proximityKm) {
+      const reduceBy = Number((avgProximityKm - proximityKm).toFixed(2));
+      counterfactual = `Choose a pickup closer by ~${reduceBy} km to tighten proximity.`;
+    } else {
+      counterfactual = 'You already fit time and proximity for this group.';
+    }
+
+    const explanations = {
+      timeWindowMinutes,
+      timeSpreadMin,
+      timeWindowOk,
+      avgProximityKm,
+      proximityKm,
+      vehicleCapacity,
+      capacityNote: `Capacity enforced by vehicle type (${vehicleType}).`,
+      counterfactual,
+    };
+
     return {
       groupId: idx + 1,
       route: `${cluster[0].community} → ${cluster[0].destination}`,
-      members: cluster.length,
+      members: members,
       passengers: getTotalPassengers(cluster),
       capacity: vehicleCapacity,
       vehicleType: vehicleType,
@@ -274,6 +416,9 @@ export function formatClusterResults(clusters) {
       time: cluster[0].time,
       date: cluster[0].date,
       remainingSeats: Math.max(0, vehicleCapacity - getTotalPassengers(cluster)),
+      co2SavingPct,
+      explanations,
+      memberUserIds: Array.from(memberIdSet),
       rideOptions: cluster.map(r => {
         const seats = Number(r.seats) || 0;
         const passengers = getPassengerCount(r);
