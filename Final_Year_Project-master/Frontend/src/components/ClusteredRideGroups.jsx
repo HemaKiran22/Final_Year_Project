@@ -1,7 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { FaUsers, FaCar, FaMapMarkerAlt, FaClock, FaRupeeSign, FaTaxi, FaLeaf, FaChartLine, FaStar } from 'react-icons/fa';
 
-const ClusteredRideGroups = ({ clusters, stats, onJoinGroup, joiningGroupId }) => {
+const ClusteredRideGroups = ({ clusters, stats, onJoinGroup, joiningGroupId, chatRideId, currentUserId }) => {
+  const [openExplainId, setOpenExplainId] = useState(null);
+  const navigate = useNavigate();
   if (!clusters || clusters.length === 0) {
     return (
       <div className="no-clusters-modern">
@@ -89,6 +92,10 @@ const ClusteredRideGroups = ({ clusters, stats, onJoinGroup, joiningGroupId }) =
           const vehicleIcon = group.vehicleType === 'auto' ? <FaTaxi /> : <FaCar />;
           const vehicleLabel = group.vehicleType === 'auto' ? 'Auto' : 'Car';
           const animationDelay = `${index * 0.1}s`;
+          const isMine = !!currentUserId && (
+            (Array.isArray(group.memberUserIds) && group.memberUserIds.includes(currentUserId)) ||
+            (Array.isArray(group.rideOptions) && group.rideOptions.some(o => o.driverId === currentUserId))
+          );
           
           return (
             <div 
@@ -177,14 +184,58 @@ const ClusteredRideGroups = ({ clusters, stats, onJoinGroup, joiningGroupId }) =
                 </div>
               </div>
 
+              {/* XAI: Why this group */}
+              {group.explanations && (
+                <div style={{ marginTop: '8px' }}>
+                  <button
+                    className="join-group-btn-modern"
+                    style={{ background: '#6b7280' }}
+                    onClick={() => setOpenExplainId(openExplainId === group.groupId ? null : group.groupId)}
+                  >
+                    {openExplainId === group.groupId ? 'Hide Why' : 'Why this group?'}
+                  </button>
+                  {openExplainId === group.groupId && (
+                    <div style={{
+                      marginTop: '10px',
+                      background: '#f3f4f6',
+                      border: '1px solid #e5e7eb',
+                      borderRadius: '12px',
+                      padding: '12px'
+                    }}>
+                      <div style={{ fontSize: '0.9rem', color: '#374151' }}>
+                        <div>• Time spread: {group.explanations.timeSpreadMin} min (window {group.explanations.timeWindowMinutes} min)</div>
+                        <div>• Avg pickup proximity: {group.explanations.avgProximityKm} km (target ≤ {group.explanations.proximityKm} km)</div>
+                        <div>• Capacity: {group.capacity} seats ({group.explanations.capacityNote})</div>
+                        <div>• Tip: {group.explanations.counterfactual}</div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Savings Badge */}
               <div className="savings-badge">
                 <FaLeaf className="savings-icon" />
                 <span>Save ₹{Math.round(120 - group.costPerPerson)} per ride!</span>
               </div>
 
-              {/* Join Button */}
-              {onJoinGroup && (
+              {/* CO2 Savings Estimate */}
+              {typeof group.co2SavingPct === 'number' && (
+                <div className="co2-savings" style={{
+                  marginTop: '8px',
+                  fontSize: '0.9rem',
+                  color: '#065f46',
+                  background: '#ecfdf5',
+                  borderRadius: '10px',
+                  padding: '8px 12px',
+                  display: 'inline-block'
+                }}>
+                  🌿 Estimated CO₂ saved: {group.co2SavingPct}% vs solo
+                </div>
+              )}
+
+              {/* Join / Open Chat Buttons */}
+              {onJoinGroup && !isMine && (
                 <button 
                   className={`join-group-btn-modern ${group.isFull ? 'disabled' : ''} ${joiningGroupId === group.groupId ? 'loading' : ''}`}
                   onClick={() => onJoinGroup(group)}
@@ -195,6 +246,26 @@ const ClusteredRideGroups = ({ clusters, stats, onJoinGroup, joiningGroupId }) =
                     : joiningGroupId === group.groupId
                     ? '⏳ Joining...'
                     : '✨ Join This Group'}
+                </button>
+              )}
+
+              {isMine && (
+                <button
+                  className="join-group-btn-modern disabled"
+                  disabled
+                  title="You are already part of this group"
+                >
+                  ✅ You’re in this group
+                </button>
+              )}
+
+              {chatRideId && (
+                <button
+                  className="join-group-btn-modern"
+                  style={{ marginTop: '8px', background: '#3b82f6' }}
+                  onClick={() => navigate(`/groupchat/${chatRideId}`)}
+                >
+                  💬 Open Group Chat
                 </button>
               )}
             </div>

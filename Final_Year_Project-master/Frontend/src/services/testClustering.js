@@ -107,17 +107,18 @@ const testRides = [
 console.log('🚗 Testing Ride Clustering Algorithm\n');
 console.log('Input: 9 users from Hennur → Christ University (8:00-8:13 AM)\n');
 
-// Run clustering
-const clusters = clusterRides(testRides, {
+// Run clustering (K-Means)
+const clustersKMeans = clusterRides(testRides, {
   maxGroupSize: 3,
   timeWindowMinutes: 15,
-  proximityKm: 2
+  proximityKm: 2,
+  algorithm: 'kmeans'
 });
 
-console.log(`✅ Clustering complete! Created ${clusters.length} groups\n`);
+console.log(`✅ K-Means: Created ${clustersKMeans.length} groups\n`);
 
 // Format results
-const formatted = formatClusterResults(clusters);
+const formatted = formatClusterResults(clustersKMeans);
 
 // Display groups
 formatted.forEach(group => {
@@ -131,7 +132,7 @@ formatted.forEach(group => {
 });
 
 // Get statistics
-const stats = getClusteringStats(testRides, clusters);
+const stats = getClusteringStats(testRides, clustersKMeans);
 
 console.log('📊 Statistics:');
 console.log(`  Total Rides: ${stats.totalRides}`);
@@ -141,6 +142,22 @@ console.log(`  Reduction: ${stats.reductionPercentage}%`);
 console.log(`  Average Group Size: ${stats.averageGroupSize}`);
 console.log(`  Total Savings: ₹${stats.costSavings}`);
 console.log('');
+
+// Run clustering (DBSCAN)
+const clustersDBSCAN = clusterRides(testRides, {
+  maxGroupSize: 3,
+  timeWindowMinutes: 15,
+  proximityKm: 2,
+  algorithm: 'dbscan',
+  epsKm: 0.5,
+  minPts: 2
+});
+
+console.log(`🧪 DBSCAN: Created ${clustersDBSCAN.length} groups`);
+const formattedDb = formatClusterResults(clustersDBSCAN);
+formattedDb.forEach(group => {
+  console.log(`DBSCAN Group ${group.groupId}: ${group.route} • CO₂ saved ~${group.co2SavingPct}%`);
+});
 
 console.log('✨ Test Complete! Open http://localhost:5173/ and:');
 console.log('   1. Login to Dashboard');
