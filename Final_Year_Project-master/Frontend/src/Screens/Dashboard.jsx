@@ -8,6 +8,8 @@ import './Dashboard.css';
 import { useNavigate } from 'react-router-dom';
 import { clusterRides, formatClusterResults, getClusteringStats } from '../services/clusteringService';
 import ClusteredRideGroups from '../components/ClusteredRideGroups';
+import { startTrustModel, buildPersonalizedSuggestions } from '../services/trustModelService';
+import { buildCommunityRecommendations, startCircleDiscussion } from '../services/communityAIService';
 
 // Import components (you'll need to create these)
 
@@ -56,6 +58,15 @@ const Dashboard = () => {
   const [monthlyStats, setMonthlyStats] = useState({ rides: 0, saved: 0, co2: 0 });
   const [achievements, setAchievements] = useState([]);
   const [currentStreak, setCurrentStreak] = useState(0);
+  // Trust Model states
+  const [trustScore, setTrustScore] = useState(null);
+  const [securityLevel, setSecurityLevel] = useState('low');
+  const [securityMeasures, setSecurityMeasures] = useState([]);
+  const [safetyAlerts, setSafetyAlerts] = useState([]);
+  const [suggestedConnections, setSuggestedConnections] = useState([]);
+  const [suggestedEvents, setSuggestedEvents] = useState([]);
+  const [recommendedCircles, setRecommendedCircles] = useState([]);
+  const suggestionsUnsubRef = useRef(null);
   const [showShortcutsHelp, setShowShortcutsHelp] = useState(false);
   const [showTour, setShowTour] = useState(false);
   const [tourStep, setTourStep] = useState(0);
@@ -199,6 +210,55 @@ const Dashboard = () => {
           }
         });
 
+        // Start Trust Model subscriptions and personalized suggestions
+        const stopTrust = startTrustModel({
+          db,
+          userId: user.uid,
+          onUpdate: async ({ score, signals, security, alerts }) => {
+            setTrustScore(score);
+            setSecurityLevel(security.level);
+            setSecurityMeasures(security.measures);
+            setSafetyAlerts(alerts);
+
+            try {
+              const { suggestions, unsubscribe } = await buildPersonalizedSuggestions({
+                currentUserId: user.uid,
+                db,
+                signals,
+              });
+              setSuggestedConnections(suggestions.connections || []);
+              setSuggestedEvents(suggestions.events || []);
+              if (typeof suggestionsUnsubRef.current === 'function') {
+                try { suggestionsUnsubRef.current(); } catch {}
+              }
+              suggestionsUnsubRef.current = unsubscribe;
+            } catch (e) {
+              console.warn('Suggestion builder failed', e);
+            }
+
+            // Community AI: build circles and additional recommendations
+            try {
+              const recs = await buildCommunityRecommendations({ db, currentUserId: user.uid, signals });
+              // Merge connections (AI + base)
+              setSuggestedConnections(prev => {
+                const map = new Map();
+                [...(recs.connections || []), ...prev].forEach(c => map.set(c.id, c));
+                return Array.from(map.values()).slice(0, 8);
+              });
+              setRecommendedCircles(recs.circles || []);
+              // Events: prefer union while keeping short list
+              setSuggestedEvents(prev => {
+                const seen = new Set((prev || []).map(e => e.id));
+                const merged = [...prev];
+                for (const e of (recs.events || [])) if (!seen.has(e.id)) merged.push(e);
+                return merged.slice(0, 4);
+              });
+            } catch (err) {
+              console.warn('Community AI failed', err);
+            }
+          }
+        });
+
         // Listen for unread notifications for this user
         const notifsQuery = query(
           collection(db, 'notifications'),
@@ -206,12 +266,42 @@ const Dashboard = () => {
           where('read', '==', false),
           orderBy('createdAt', 'desc')
         );
-        const unsubscribeNotifs = onSnapshot(notifsQuery, (snapshot) => {
-          const notifs = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-          setNotificationsList(notifs);
-          setNotifications(notifs.length);
-        });
-        return () => unsubscribeProfile();
+
+        // Primary listener (requires composite index)
+        let unsubscribeNotifs = onSnapshot(
+          notifsQuery,
+          (snapshot) => {
+            const notifs = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+            setNotificationsList(notifs);
+            setNotifications(notifs.length);
+          },
+          (error) => {
+            // Fallback path when composite index is missing
+            if (error?.code === 'failed-precondition') {
+              try { unsubscribeNotifs && unsubscribeNotifs(); } catch {}
+              const fallbackQ = query(
+                collection(db, 'notifications'),
+                where('toUserId', '==', user.uid)
+              );
+              unsubscribeNotifs = onSnapshot(fallbackQ, (snapshot) => {
+                const all = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+                // Client-side filter and sort to avoid index requirement
+                const filtered = all
+                  .filter(n => n.read === false)
+                  .sort((a, b) => {
+                    const ad = a.createdAt?.toDate?.() || new Date(a.createdAt || 0);
+                    const bd = b.createdAt?.toDate?.() || new Date(b.createdAt || 0);
+                    return bd - ad; // desc
+                  });
+                setNotificationsList(filtered);
+                setNotifications(filtered.length);
+              });
+            } else {
+              console.warn('Notifications listener error:', error);
+            }
+          }
+        );
+        return () => { try { unsubscribeProfile(); } catch {}; try { stopTrust && stopTrust(); } catch {}; try { suggestionsUnsubRef.current && suggestionsUnsubRef.current(); } catch {} };
       } else {
         setUserId(null);
         navigate('/login');
@@ -1164,6 +1254,130 @@ const Dashboard = () => {
               )}
             </div>
             
+            {/* Trust & Safety */}
+            <div className="dashboard-section animate-in delay-1">
+              <div className="section-header">
+                <h2 className="section-title">Trust &amp; Safety</h2>
+                <p className="section-subtitle">Real-time trust score and safety recommendations</p>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '15px' }}>
+                <div style={{ background: 'var(--card-bg)', padding: '18px', borderRadius: '12px', boxShadow: 'var(--shadow-light)', border: '1px solid var(--light-gray)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{ fontWeight: 600, color: 'var(--dark)' }}>Trust Score</div>
+                    <div style={{ fontSize: '12px', color: 'var(--gray)' }}>Adaptive</div>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '12px' }}>
+                    <div style={{
+                      width: '60px', height: '60px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      background: '#f8fafc', border: `3px solid ${trustScore == null ? '#cbd5e1' : (trustScore < 40 ? '#d9534f' : (trustScore < 70 ? '#f0ad4e' : '#5cb85c'))}`
+                    }}>
+                      <span style={{ fontWeight: 700, color: 'var(--dark)' }}>{trustScore != null ? trustScore : '—'}</span>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: '12px', color: 'var(--gray)' }}>Security Level</div>
+                      <div style={{ fontWeight: 600, textTransform: 'capitalize' }}>{securityLevel}</div>
+                    </div>
+                  </div>
+                  {securityMeasures && securityMeasures.length > 0 && (
+                    <ul style={{ marginTop: '12px', paddingLeft: '18px', color: 'var(--dark)', fontSize: '14px' }}>
+                      {securityMeasures.slice(0, 4).map((m, i) => (<li key={i}>{m}</li>))}
+                    </ul>
+                  )}
+                </div>
+
+                <div style={{ background: 'var(--card-bg)', padding: '18px', borderRadius: '12px', boxShadow: 'var(--shadow-light)', border: '1px solid var(--light-gray)' }}>
+                  <div style={{ fontWeight: 600, color: 'var(--dark)', marginBottom: '8px' }}>Safety Alerts</div>
+                  {(safetyAlerts && safetyAlerts.length > 0) ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      {safetyAlerts.slice(0, 4).map((a, idx) => (
+                        <div key={idx} style={{
+                          padding: '10px', borderRadius: '8px',
+                          background: a.type === 'critical' ? '#fee2e2' : (a.type === 'warning' ? '#fef3c7' : '#eef2ff'),
+                          border: '1px solid var(--light-gray)'
+                        }}>
+                          <span style={{ fontSize: '13px', color: 'var(--dark)' }}>{a.text}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div style={{ fontSize: '13px', color: 'var(--gray)' }}>No safety alerts.</div>
+                  )}
+                </div>
+
+                <div style={{ background: 'var(--card-bg)', padding: '18px', borderRadius: '12px', boxShadow: 'var(--shadow-light)', border: '1px solid var(--light-gray)' }}>
+                  <div style={{ fontWeight: 600, color: 'var(--dark)', marginBottom: '8px' }}>Suggested Connections</div>
+                  {(suggestedConnections && suggestedConnections.length > 0) ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                      {suggestedConnections.map((c) => (
+                        <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: '#e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700 }}>{(c.name || 'U').charAt(0)}</div>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontWeight: 600 }}>{c.name}</div>
+                            <div style={{ fontSize: '12px', color: 'var(--gray)' }}>Shared interests: {c.overlap}</div>
+                          </div>
+                          <button className="btn btn-primary" onClick={() => navigate(`/privatechat/${c.id}`)}>Say Hi</button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div style={{ fontSize: '13px', color: 'var(--gray)' }}>No connection suggestions yet.</div>
+                  )}
+                </div>
+
+                <div style={{ background: 'var(--card-bg)', padding: '18px', borderRadius: '12px', boxShadow: 'var(--shadow-light)', border: '1px solid var(--light-gray)' }}>
+                  <div style={{ fontWeight: 600, color: 'var(--dark)', marginBottom: '8px' }}>Community Events</div>
+                  {(suggestedEvents && suggestedEvents.length > 0) ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                      {suggestedEvents.map((evt) => (
+                        <div key={evt.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <div>
+                            <div style={{ fontWeight: 600 }}>{evt.title}</div>
+                            <div style={{ fontSize: '12px', color: 'var(--gray)' }}>{evt.desc}</div>
+                          </div>
+                          <button className="btn btn-primary" onClick={() => alert('Event RSVP coming soon')}>RSVP</button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div style={{ fontSize: '13px', color: 'var(--gray)' }}>No upcoming suggestions.</div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Community AI Recommendations */}
+            <div className="dashboard-section animate-in delay-1">
+              <div className="section-header">
+                <h2 className="section-title">Community AI</h2>
+                <p className="section-subtitle">Personalized circles and discussion starters to build trust</p>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '15px' }}>
+                <div style={{ background: 'var(--card-bg)', padding: '18px', borderRadius: '12px', boxShadow: 'var(--shadow-light)', border: '1px solid var(--light-gray)' }}>
+                  <div style={{ fontWeight: 600, color: 'var(--dark)', marginBottom: '8px' }}>Recommended Circles</div>
+                  {(recommendedCircles && recommendedCircles.length > 0) ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                      {recommendedCircles.map((c) => (
+                        <div key={c.id} style={{ border: '1px solid var(--light-gray)', borderRadius: '8px', padding: '12px' }}>
+                          <div style={{ fontWeight: 600, color: 'var(--dark)' }}>{c.title}</div>
+                          <div style={{ fontSize: '12px', color: 'var(--gray)', marginTop: '4px' }}>{c.reason}</div>
+                          <div style={{ marginTop: '8px', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                            {c.members.map(m => (
+                              <span key={m.id} style={{ fontSize: '12px', background: '#eef2ff', border: '1px solid #c7d2fe', padding: '4px 8px', borderRadius: '999px' }}>{m.name}</span>
+                            ))}
+                          </div>
+                          <div style={{ marginTop: '10px', display: 'flex', gap: '8px' }}>
+                            <button className="btn btn-primary" onClick={async () => { try { await startCircleDiscussion(db, userId, c); alert('Introductions sent!'); } catch (e) { alert('Failed to start discussion'); } } }>Start Discussion</button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div style={{ fontSize: '13px', color: 'var(--gray)' }}>No circle suggestions yet.</div>
+                  )}
+                </div>
+              </div>
+            </div>
+
             {/* Suggested Rides Section */}
             {suggestedRides.length > 0 && (
               <div className="dashboard-section animate-in delay-1">

@@ -24,6 +24,44 @@ How to demo:
 
 See the detailed explainer at [docs/XAI_Explainability.md](docs/XAI_Explainability.md).
 
+## AI Used
+
+This project uses classical machine learning for ride grouping (unsupervised learning). It also supports an optional generative AI chatbot:
+
+- K-Means clustering: Groups rides by pickup proximity and time window; see [src/services/clusteringService.js](src/services/clusteringService.js) (`kMeansClustering`).
+- DBSCAN (optional): Density-based spatial clustering over pickup latitude/longitude; see `dbscanClustering` in the same file.
+- Distance metric: Haversine distance (km) for geographic closeness, weighted with time difference.
+- Explainability: We expose “Why this group?” metrics (time spread, average proximity, capacity, counterfactual tip) shown in [src/components/ClusteredRideGroups.jsx](src/components/ClusteredRideGroups.jsx).
+- Chatbots:
+	- Floating helper: [src/components/FloatingChatbot.jsx](src/components/FloatingChatbot.jsx) now supports LLM answers via `/api/chat`.
+	- Default Gemini model: `gemini-1.5-flash-latest` (override with `VITE_LLM_MODEL`).
+	- Guided ride finder: [src/Screens/RideChatbot.jsx](src/Screens/RideChatbot.jsx) (no LLM).
+
+### Enable LLM Chat (Optional)
+
+1. Set environment variables (Vercel → Project Settings → Environment Variables or `Frontend/.env`):
+
+	 - For OpenAI: `OPENAI_API_KEY` (project-level secret, not exposed to browser)
+	 - For Google Gemini: `GEMINI_API_KEY` (or `GOOGLE_API_KEY`)
+	 - In `Frontend/.env`:
+		 - `VITE_LLM_PROVIDER=openai` (or `google`)
+		 - Optionally `VITE_CHAT_API_URL=/api/chat`
+
+2. Deploy on Vercel. The serverless function lives at `/api/chat` and proxies requests securely to the chosen LLM.
+
+3. Local dev:
+
+	 - Start the frontend:
+		 ```bash
+		 npm run dev
+		 ```
+	 - If testing the serverless function locally, use Vercel CLI:
+		 ```bash
+		 vercel dev
+		 ```
+
+If keys are missing, the chatbot falls back with a friendly error.
+
 ## Environment Variables
 
 This project uses Vite. Only variables prefixed with `VITE_` are exposed to the browser.

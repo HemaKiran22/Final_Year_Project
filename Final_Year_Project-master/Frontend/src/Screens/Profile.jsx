@@ -206,7 +206,7 @@ const Profile = () => {
           <div className="profile-metric-card">
             <FaMoneyBillWave size={40} className="metric-icon" />
             <div className="metric-content">
-              <span>₹{userProfile?.moneySaved || '0'}</span>
+              <span>₹{Number(userProfile?.moneySaved || 0).toFixed(2)}</span>
               <p>Money Saved</p>
             </div>
           </div>
