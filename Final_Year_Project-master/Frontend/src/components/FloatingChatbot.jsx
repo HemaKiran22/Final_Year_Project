@@ -5,6 +5,7 @@ import { askLLM } from '../services/llmService';
 import { db, auth } from '../firebase';
 import { parseRideQuery } from '../services/nlpAgent';
 import { searchRidesByQuery } from '../services/rideSearchService';
+import { clusterRides, formatClusterResults } from '../services/clusteringService';
 import { autoBookBestRide } from '../services/autoBookService';
 import { joinRideById, createOrGetPrivateChat } from '../services/rideActionService';
 import { createRideFromPrompt } from '../services/ridePostService';
@@ -639,11 +640,117 @@ const FloatingChatbot = () => {
   };
 
   const handlePrivateChat = async (ride) => {
-    const res = await createOrGetPrivateChat(db, auth, ride);
-    if (res.ok && res.chatId) {
-      navigate(`/privatechat/${res.chatId}`);
-    } else {
-      setMessages(prev => [...prev, { from: 'bot', text: res.message || 'Unable to start private chat.' }]);
+    try {
+      if (!ride?.driverId) {
+        setMessages(prev => [...prev, { from: 'bot', text: 'Private Chat is available only when the ride has a driver. Use Group Chat for shared groups.' }]);
+        return;
+      }
+      const res = await createOrGetPrivateChat(db, auth, ride);
+      if (res.ok && res.chatId) {
+        navigate(`/privatechat/${res.chatId}`);
+      } else {
+        setMessages(prev => [...prev, { from: 'bot', text: res.message || 'Unable to start private chat.' }]);
+      }
+    } catch (e) {
+      setMessages(prev => [...prev, { from: 'bot', text: e?.message || 'Unable to start private chat.' }]);
+    }
+  };
+
+  // --- Clustering groups inside chatbot ---
+  const fetchActiveRidesForClustering = async () => {
+    try {
+      const { collection, getDocs, query, where } = await import('firebase/firestore');
+      const ridesRef = collection(db, 'rides');
+      const q = query(ridesRef, where('status', '==', 'Pending'));
+      const snap = await getDocs(q);
+      const now = new Date();
+      const all = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      const active = all.filter(r => {
+        const taken = Array.isArray(r.passengers) ? r.passengers.length : 0;
+        const seats = Number(r.seats || 1);
+        if (taken >= seats) return false;
+        const dt = new Date(`${r.date || ''} ${r.time || ''}`);
+        return dt > now;
+      });
+      return active.map(ride => ({
+        id: ride.id,
+        community: ride.community || 'Community',
+        destination: ride.destination || 'Destination',
+        date: ride.date,
+        time: ride.time,
+        userName: ride.driverName || 'Driver',
+        driverId: ride.driverId || null,
+        driverName: ride.driverName || '',
+        seats: Number(ride.seats || 1),
+        passengers: Array.isArray(ride.passengers) ? ride.passengers : [],
+        pickupLat: ride.pickupLat || 12.8420,
+        pickupLng: ride.pickupLng || 77.6611,
+        pickupLocation: ride.community || 'Community',
+        vehicleType: ride.vehicleType || 'car',
+      }));
+    } catch (e) {
+      console.warn('Failed to fetch rides for clustering:', e);
+      return [];
+    }
+  };
+
+  const listClustersInChat = async () => {
+    try {
+      const rides = await fetchActiveRidesForClustering();
+      if (!rides.length) {
+        setMessages(prev => [...prev, { from: 'bot', text: 'No active groups right now. Try posting a ride or searching a different time.' }]);
+        return;
+      }
+      const clusters = clusterRides(rides, { maxGroupSize: 3, timeWindowMinutes: 15, algorithm: 'kmeans' });
+      const formatted = formatClusterResults(clusters, { timeWindowMinutes: 15, proximityKm: 2 });
+      setMessages(prev => [...prev, { from: 'bot', type: 'clusters', text: 'Here are current Ride Groups:', groups: formatted }]);
+    } catch (e) {
+      setMessages(prev => [...prev, { from: 'bot', text: e?.message || 'Unable to list clustering groups.' }]);
+    }
+  };
+
+  const handleJoinClusterGroup = async (group) => {
+    if (!auth?.currentUser) {
+      setMessages(prev => [...prev, { from: 'bot', text: 'Please login to join a group.' }]);
+      try { navigate('/login'); } catch {}
+      return;
+    }
+    const userId = auth.currentUser.uid;
+    const userNameHint = auth?.currentUser?.displayName || auth?.currentUser?.email || '';
+
+    const candidate = Array.isArray(group?.rideOptions)
+      ? group.rideOptions.find(o => (o.seatsRemaining || 0) > 0 && o.rideId)
+      : null;
+
+    try {
+      if (candidate) {
+        const res = await joinRideById(db, auth, { id: candidate.rideId, driverId: candidate.driverId, destination: group?.route?.split(' → ')[1] || '' }, userNameHint);
+        setMessages(prev => [...prev, { from: 'bot', text: res.ok ? 'Joined this group successfully. Open Group Chat from Dashboard.' : (res.message || 'Could not join this group.') }]);
+      } else {
+        const { addDoc, collection, serverTimestamp } = await import('firebase/firestore');
+        const [community, destination] = (group.route || '').split(' → ').map(s => (s || '').trim());
+        const newRide = {
+          driverId: null,
+          driverName: 'Shared Ride',
+          isShared: true,
+          community: community || 'Community',
+          destination: destination || 'Destination',
+          date: group.date,
+          time: group.time,
+          vehicleType: group.vehicleType || 'car',
+          seats: group.capacity || 3,
+          price: group.estimatedCost || 0,
+          status: 'Forming',
+          passengers: [userId],
+          createdAt: serverTimestamp(),
+          createdBy: userId,
+        };
+        const created = await addDoc(collection(db, 'rides'), newRide);
+        setMessages(prev => [...prev, { from: 'bot', text: 'You have successfully joined the group. Open Group Chat from Dashboard.', rideId: created.id }]);
+      }
+    } catch (e) {
+      const msg = e?.code === 'permission-denied' ? 'You do not have permission to join this group.' : (e?.message || 'Could not join this group.');
+      setMessages(prev => [...prev, { from: 'bot', text: msg }]);
     }
   };
 
@@ -700,6 +807,18 @@ const FloatingChatbot = () => {
           return;
         }
         // finalize
+        if (!auth?.currentUser) {
+          setIsLoading(false);
+          setPostWizard(null);
+          setMessages(prev => {
+            const idx = prev.findIndex(m => m.from === 'bot' && m.text === 'Thinking…');
+            const resultMsg = { from: 'bot', text: 'Please log in first to post a ride. Go to Login or say: "login email: your@email.com password: yourPassword".' };
+            if (idx >= 0) { const next = [...prev]; next[idx] = resultMsg; return next; }
+            return [...prev, resultMsg];
+          });
+          try { navigate('/login'); } catch {}
+          return;
+        }
         const built = `post ride to ${w.dest} on ${w.date} at ${w.time}, seats ${w.seats}, price ${w.price}`;
         const userNameHint = auth?.currentUser?.displayName || auth?.currentUser?.email || '';
         const res = await createRideFromPrompt(db, auth, built, userNameHint);
@@ -852,10 +971,34 @@ const FloatingChatbot = () => {
         return;
       }
 
+      // User asks for clustering groups
+      const lowClusters = text.toLowerCase();
+      if (lowClusters.includes('cluster') || lowClusters.includes('ride groups') || lowClusters.includes('groups available') || lowClusters.includes('clustering groups')) {
+        setIsLoading(false);
+        setMessages(prev => {
+          const idx = prev.findIndex(m => m.from === 'bot' && m.text === 'Thinking…');
+          if (idx >= 0) { const next = [...prev]; next.splice(idx, 1); return next; }
+          return prev;
+        });
+        await listClustersInChat();
+        return;
+      }
+
       // Try local NLP ride intent first
       const q = parseRideQuery(text);
       // Post ride intent (handled separately)
       if (/\b(post a ride|post ride|create ride|add ride)\b/i.test(text)) {
+        if (!auth?.currentUser) {
+          setIsLoading(false);
+          setMessages(prev => {
+            const idx = prev.findIndex(m => m.from === 'bot' && m.text === 'Thinking…');
+            const resultMsg = { from: 'bot', text: 'Please log in first to post a ride. Tap Login or say: "login email: your@email.com password: yourPassword".' };
+            if (idx >= 0) { const next = [...prev]; next[idx] = resultMsg; return next; }
+            return [...prev, resultMsg];
+          });
+          try { navigate('/login'); } catch {}
+          return;
+        }
         const userNameHint = auth?.currentUser?.displayName || auth?.currentUser?.email || '';
         const res = await createRideFromPrompt(db, auth, text, userNameHint);
         setIsLoading(false);
@@ -1059,6 +1202,28 @@ const FloatingChatbot = () => {
                               <button className="btn btn-primary" onClick={() => handleAccept(r)}>Accept</button>
                               <button className="btn btn-secondary" onClick={() => handlePrivateChat(r)}>Private Chat</button>
                               <button className="btn" onClick={() => downloadICS(r)}>Add to Calendar</button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : m.type === 'clusters' ? (
+                      <div>
+                        <div style={{ marginBottom: 8 }}>{m.text}</div>
+                        {Array.isArray(m.groups) && m.groups.map((g) => (
+                          <div key={`grp-${g.groupId}`} className="ride-card" style={{ border: '1px solid #ddd', borderRadius: 8, padding: 10, marginBottom: 8 }}>
+                            <div style={{ fontWeight: 600 }}>{g.route}</div>
+                            <div>Date: {g.date} · Time: {g.time} · {g.vehicleLabel}</div>
+                            <div>Members: {g.members} · Seats left: {g.remainingSeats} · CO₂ saved ~{g.co2SavingPct}%</div>
+                            <div>Cost/person: ₹{Number(g.costPerPerson || 0).toFixed(0)}</div>
+                            <div style={{ color:'#6b7280', fontSize:12, marginTop:4 }}>
+                              {g.explanations?.counterfactual || ''}
+                            </div>
+                            <div style={{ display:'flex', gap:8, marginTop:8 }}>
+                              <button className="btn btn-primary" onClick={() => handleJoinClusterGroup(g)}>Accept</button>
+                              {g.rideOptions?.[0]?.driverId && (
+                                <button className="btn btn-secondary" onClick={() => handlePrivateChat({ id: g.rideOptions[0].rideId, driverId: g.rideOptions[0].driverId, destination: g.route.split(' → ')[1] })}>Private Chat</button>
+                              )}
+                              <button className="btn" onClick={() => downloadICS({ id: `grp-${g.groupId}`, destination: g.route.split(' → ')[1], date: g.date, time: g.time, driverName: g.rideOptions?.[0]?.driverName || 'Shared', price: g.costPerPerson })}>Add to Calendar</button>
                             </div>
                           </div>
                         ))}
