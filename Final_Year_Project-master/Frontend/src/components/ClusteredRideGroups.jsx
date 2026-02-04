@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FaUsers, FaCar, FaMapMarkerAlt, FaClock, FaRupeeSign, FaTaxi, FaLeaf, FaChartLine, FaStar } from 'react-icons/fa';
+import { db, auth } from '../firebase';
+import { createOrGetPrivateChat } from '../services/rideActionService';
 
 const ClusteredRideGroups = ({ clusters, stats, onJoinGroup, joiningGroupId, chatRideId, currentUserId }) => {
   const [openExplainId, setOpenExplainId] = useState(null);
@@ -266,6 +268,33 @@ const ClusteredRideGroups = ({ clusters, stats, onJoinGroup, joiningGroupId, cha
                   onClick={() => navigate(`/groupchat/${chatRideId}`)}
                 >
                   💬 Open Group Chat
+                </button>
+              )}
+
+              {/* Private Chat with the primary ride's driver */}
+              {Array.isArray(group.rideOptions) && group.rideOptions.length > 0 && (
+                <button
+                  className="join-group-btn-modern"
+                  style={{ marginTop: '8px', background: '#10b981' }}
+                  onClick={async () => {
+                    try {
+                      const primary = group.rideOptions[0];
+                      if (!primary || !primary.rideId || !primary.driverId) {
+                        alert('Driver chat unavailable for this group.');
+                        return;
+                      }
+                      const res = await createOrGetPrivateChat(db, auth, { id: primary.rideId, driverId: primary.driverId });
+                      if (res.ok && res.chatId) {
+                        navigate(`/privatechat/${res.chatId}`);
+                      } else {
+                        alert(res.message || 'Unable to open private chat.');
+                      }
+                    } catch (e) {
+                      alert('Error opening private chat: ' + (e?.message || e));
+                    }
+                  }}
+                >
+                  🔔 Private Chat with Driver
                 </button>
               )}
             </div>

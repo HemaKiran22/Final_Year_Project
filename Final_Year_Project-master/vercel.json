@@ -1,6 +1,7 @@
 {
-  "buildCommand": "cd Final_Year_Project-master/Frontend && npm ci && node ./node_modules/vite/bin/vite.js build",
-  "outputDirectory": "Final_Year_Project-master/Frontend/dist",
+  "buildCommand": "npm ci && cd Frontend && npm ci && node ./node_modules/vite/bin/vite.js build",
+  "outputDirectory": "Frontend/dist",
   "framework": "vite",
-  "installCommand": "cd Final_Year_Project-master/Frontend && npm ci"
+  "installCommand": "npm ci && cd Frontend && npm ci",
+  "devCommand": "cd Frontend && npm run dev -- --port $PORT"
 }
