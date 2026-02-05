@@ -97,6 +97,25 @@ const PrivateChat = () => {
         senderId: auth.currentUser.uid,
         createdAt: serverTimestamp(),
       });
+      // Also post to Society Feed when message addresses the community
+      try {
+        const lower = newMessage.trim().toLowerCase();
+        if (lower.includes('hello community')) {
+          const username = auth.currentUser.displayName || auth.currentUser.email?.split('@')[0] || 'Anonymous';
+          await addDoc(collection(db, 'feed'), {
+            username,
+            userId: auth.currentUser.uid,
+            message: newMessage.trim(),
+            likes: [],
+            comments: [],
+            fileUrl: '',
+            fileType: '',
+            createdAt: new Date(),
+          });
+        }
+      } catch (feedErr) {
+        console.warn('Feed post skipped:', feedErr);
+      }
       // Send a notification to the other participant
       let participants = Array.isArray(chatMeta?.participants) ? chatMeta.participants : [];
       let otherUserId = participants.find((p) => p && p !== auth.currentUser.uid);
@@ -162,7 +181,28 @@ const PrivateChat = () => {
         isCompleted: true,
       });
 
+      // Notify the ride owner (driver) on acceptance
+      try {
+        if (ride.driverId && ride.driverId !== thisUserId) {
+          await addDoc(collection(db, 'notifications'), {
+            toUserId: ride.driverId,
+            fromUserId: thisUserId,
+            rideId: ride.id,
+            chatId: chatMeta.id,
+            chatType: 'private',
+            type: 'accepted',
+            message: `${auth.currentUser.email || 'A passenger'} accepted your ride to ${ride.destination}.`,
+            createdAt: new Date(),
+            read: false,
+          });
+        }
+      } catch (notifyErr) {
+        console.warn('Acceptance notification skipped:', notifyErr);
+      }
+
       // Don't show rating yet - wait for ride to be completed
+      // Navigate back to dashboard so the updated stats and completed ride reflect immediately
+      try { navigate('/dashboard'); } catch {}
     } catch (error) {
       console.error('Error accepting ride from chat:', error);
     } finally {

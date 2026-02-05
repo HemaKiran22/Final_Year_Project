@@ -1,5 +1,6 @@
-import { runTransaction, doc, addDoc, collection } from 'firebase/firestore';
+import { runTransaction, doc, addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { searchRidesByQuery } from './rideSearchService';
+import { createOrGetPrivateChat } from './rideActionService';
 
 export async function autoBookBestRide(db, auth, q, userNameHint) {
   const rides = await searchRidesByQuery(db, q);
@@ -42,18 +43,43 @@ export async function autoBookBestRide(db, auth, q, userNameHint) {
       });
     });
 
-    // Best-effort notify the driver
+    // Create or get a private chat with the driver, post a system message, and notify driver with deep link
     if (candidate.driverId) {
       try {
-        await addDoc(collection(db, 'notifications'), {
-          toUserId: candidate.driverId,
-          fromUserId: user.uid,
-          rideId: candidate.id,
-          type: 'join',
-          createdAt: new Date(),
-          read: false,
-          message: `${userNameHint || 'A passenger'} joined your ride to ${candidate.destination}.`
-        });
+        const chatRes = await createOrGetPrivateChat(db, auth, candidate);
+        if (chatRes.ok && chatRes.chatId) {
+          // Post a lightweight system message from the passenger
+          try {
+            await addDoc(collection(db, 'chats', chatRes.chatId, 'messages'), {
+              text: `${userNameHint || 'A passenger'} joined your ride to ${candidate.destination}.`,
+              senderId: user.uid,
+              createdAt: serverTimestamp(),
+            });
+          } catch {}
+
+          // Notify driver with a message-type notification that links to private chat
+          await addDoc(collection(db, 'notifications'), {
+            toUserId: candidate.driverId,
+            fromUserId: user.uid,
+            chatId: chatRes.chatId,
+            chatType: 'private',
+            type: 'message',
+            text: `${userNameHint || 'A passenger'} joined your ride to ${candidate.destination}.`,
+            createdAt: serverTimestamp(),
+            read: false,
+          });
+        } else {
+          // Fallback: send a generic join notification without chat link
+          await addDoc(collection(db, 'notifications'), {
+            toUserId: candidate.driverId,
+            fromUserId: user.uid,
+            rideId: candidate.id,
+            type: 'join',
+            message: `${userNameHint || 'A passenger'} joined your ride to ${candidate.destination}.`,
+            createdAt: serverTimestamp(),
+            read: false,
+          });
+        }
       } catch {
         // ignore notification failures
       }

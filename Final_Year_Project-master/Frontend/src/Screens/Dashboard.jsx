@@ -621,7 +621,11 @@ const Dashboard = () => {
       console.error('Failed to mark notification as read', e);
     }
     if (latest.chatId) {
-      navigate(`/groupchat/${latest.chatId}`);
+      if (latest.chatType === 'private') {
+        navigate(`/privatechat/${latest.chatId}`);
+      } else {
+        navigate(`/groupchat/${latest.chatId}`);
+      }
     }
   };
 
@@ -1529,7 +1533,7 @@ const Dashboard = () => {
                   <div className="card-icon">
                     <FaRobot />
                   </div>
-                  <h3>AI Agent</h3>
+                  <h3>Find a Ride</h3>
                   <p>Use our AI agent to find the perfect ride</p>
                 </div>
                 

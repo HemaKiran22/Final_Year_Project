@@ -70,6 +70,24 @@ export default function GroupChat() {
         senderName: userName,
         createdAt: new Date(),
       });
+      // Also post to Society Feed when message addresses the community
+      try {
+        const lower = text.trim().toLowerCase();
+        if (lower.includes('hello community')) {
+          await addDoc(collection(db, 'feed'), {
+            username: userName,
+            userId: user.uid,
+            message: text.trim(),
+            likes: [],
+            comments: [],
+            fileUrl: '',
+            fileType: '',
+            createdAt: new Date(),
+          });
+        }
+      } catch (feedErr) {
+        console.warn('Feed post skipped:', feedErr);
+      }
       // Notify all group members except the sender
       try {
         const membersSet = new Set([
@@ -111,6 +129,25 @@ export default function GroupChat() {
       if (acceptedBy.includes(user.uid)) return;
 
       await updateDoc(rideRef, { acceptedBy: arrayUnion(user.uid) });
+
+      // Notify the ride owner (driver) on acceptance
+      try {
+        if (data.driverId && data.driverId !== user.uid) {
+          await addDoc(collection(db, 'notifications'), {
+            toUserId: data.driverId,
+            fromUserId: user.uid,
+            rideId,
+            chatId: rideId,
+            chatType: 'group',
+            type: 'accepted',
+            message: `${userName} accepted your ride to ${data.destination}.`,
+            createdAt: new Date(),
+            read: false,
+          });
+        }
+      } catch (notifyErr) {
+        console.warn('Acceptance notification skipped:', notifyErr);
+      }
 
       // After accepting, check if everyone accepted; if yes, set status = 'Accepted'
       const allMembers = new Set([

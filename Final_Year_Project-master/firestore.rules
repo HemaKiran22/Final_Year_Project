@@ -5,10 +5,17 @@ service cloud.firestore {
     // Helpers
     function isRideMember(rideId) {
       return request.auth != null && (
+        // Passenger membership
         (
           get(/databases/$(database)/documents/rides/$(rideId)).data.passengers is list
           && (request.auth.uid in get(/databases/$(database)/documents/rides/$(rideId)).data.passengers)
         )
+        // Accepted-by also counts as a member for group chat coordination
+        || (
+          get(/databases/$(database)/documents/rides/$(rideId)).data.acceptedBy is list
+          && (request.auth.uid in get(/databases/$(database)/documents/rides/$(rideId)).data.acceptedBy)
+        )
+        // Driver or creator of shared ride
         || (get(/databases/$(database)/documents/rides/$(rideId)).data.driverId == request.auth.uid)
         || (get(/databases/$(database)/documents/rides/$(rideId)).data.createdBy == request.auth.uid)
       );

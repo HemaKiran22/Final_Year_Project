@@ -12,6 +12,7 @@ import {
   arrayUnion,
   increment,
 } from "firebase/firestore";
+import { createOrGetPrivateChat } from "../services/rideActionService";
 import { onAuthStateChanged } from "firebase/auth";
 import { useNavigate } from "react-router-dom";
 import "./RideChatbot.css";
@@ -72,6 +73,44 @@ const RideChatbot = () => {
         ridesShared: increment(1),
         moneySaved: increment(moneySavedPerPerson || 0),
       });
+      // Create or get private chat and notify the driver with deep link
+      try {
+        if (ride.driverId && ride.driverId !== user.uid) {
+          const chatRes = await createOrGetPrivateChat(db, auth, ride);
+          if (chatRes.ok && chatRes.chatId) {
+            try {
+              await addDoc(collection(db, 'chats', chatRes.chatId, 'messages'), {
+                text: `${user.email || 'A passenger'} accepted your ride to ${ride.destination}.`,
+                senderId: user.uid,
+                createdAt: serverTimestamp(),
+              });
+            } catch {}
+
+            await addDoc(collection(db, 'notifications'), {
+              toUserId: ride.driverId,
+              fromUserId: user.uid,
+              chatId: chatRes.chatId,
+              chatType: 'private',
+              type: 'message',
+              text: `${user.email || 'A passenger'} accepted your ride to ${ride.destination}.`,
+              createdAt: serverTimestamp(),
+              read: false,
+            });
+          } else {
+            await addDoc(collection(db, 'notifications'), {
+              toUserId: ride.driverId,
+              fromUserId: user.uid,
+              rideId: ride.id,
+              type: 'accepted',
+              message: `${user.email || 'A passenger'} accepted your ride to ${ride.destination}.`,
+              createdAt: serverTimestamp(),
+              read: false,
+            });
+          }
+        }
+      } catch (notifyErr) {
+        console.warn('Acceptance notification skipped:', notifyErr);
+      }
       setMessage("✅ Ride successfully booked!");
     } catch (err) {
       console.error("Error accepting ride:", err);

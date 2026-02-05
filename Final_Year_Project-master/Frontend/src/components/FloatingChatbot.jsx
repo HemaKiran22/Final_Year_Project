@@ -1186,25 +1186,37 @@ const FloatingChatbot = () => {
                             }}>Save this search</button>
                           </div>
                         )}
-                        {Array.isArray(m.rides) && m.rides.map((r) => (
-                          <div key={r.id} className="ride-card" style={{ border: '1px solid #ddd', borderRadius: 8, padding: 10, marginBottom: 8 }}>
-                            <div style={{ fontWeight: 600 }}>{r.destination}</div>
-                            <div>Date: {r.date} · Time: {r.time}</div>
-                            <div>Driver: {r.driverName}{r.driverAverageRating != null ? ` · ${r.driverAverageRating.toFixed(1)}★` : ''}</div>
-                            <div>Seats left: {(r.seats || 1) - (Array.isArray(r.passengers) ? r.passengers.length : 0)}</div>
-                            <div>Price: ₹{Number(r.price || 0)}</div>
-                            {m.q && (
-                              <div style={{ color:'#6b7280', fontSize:12, marginTop:4 }}>
-                                {explainMatch(r, m.q)}
+                        {Array.isArray(m.rides) && m.rides.map((r) => {
+                          const me = auth?.currentUser?.uid || null;
+                          const joined = me ? (Array.isArray(r.passengers) && r.passengers.includes(me)) : false;
+                          const isMine = me && r.driverId === me;
+                          const seatsLeft = (r.seats || 1) - (Array.isArray(r.passengers) ? r.passengers.length : 0);
+                          return (
+                            <div key={r.id} className="ride-card" style={{ border: '1px solid #ddd', borderRadius: 8, padding: 10, marginBottom: 8 }}>
+                              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+                                <div style={{ fontWeight: 600 }}>{r.destination}</div>
+                                <div style={{ display:'flex', gap:6 }}>
+                                  {isMine && (<span style={{ fontSize:12, color:'#2563eb', border:'1px solid #93c5fd', padding:'2px 6px', borderRadius:6 }}>Your ride</span>)}
+                                  {joined && !isMine && (<span style={{ fontSize:12, color:'#16a34a', border:'1px solid #86efac', padding:'2px 6px', borderRadius:6 }}>Joined</span>)}
+                                </div>
                               </div>
-                            )}
-                            <div style={{ display:'flex', gap:8, marginTop:8 }}>
-                              <button className="btn btn-primary" onClick={() => handleAccept(r)}>Accept</button>
-                              <button className="btn btn-secondary" onClick={() => handlePrivateChat(r)}>Private Chat</button>
-                              <button className="btn" onClick={() => downloadICS(r)}>Add to Calendar</button>
+                              <div>Date: {r.date} · Time: {r.time}</div>
+                              <div>Driver: {r.driverName}{r.driverAverageRating != null ? ` · ${r.driverAverageRating.toFixed(1)}★` : ''}</div>
+                              <div>Seats left: {seatsLeft}</div>
+                              <div>Price: ₹{Number(r.price || 0)}</div>
+                              {m.q && (
+                                <div style={{ color:'#6b7280', fontSize:12, marginTop:4 }}>
+                                  {explainMatch(r, m.q)}
+                                </div>
+                              )}
+                              <div style={{ display:'flex', gap:8, marginTop:8 }}>
+                                <button className="btn btn-primary" onClick={() => handleAccept(r)} disabled={joined || isMine}>{joined ? 'Already Joined' : (isMine ? 'Owner' : 'Accept')}</button>
+                                <button className="btn btn-secondary" onClick={() => handlePrivateChat(r)}>{joined || isMine ? 'Open Private Chat' : 'Private Chat'}</button>
+                                <button className="btn" onClick={() => downloadICS(r)}>Add to Calendar</button>
+                              </div>
                             </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     ) : m.type === 'clusters' ? (
                       <div>
