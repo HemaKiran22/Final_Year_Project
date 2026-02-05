@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { collection, onSnapshot, addDoc, query, where, getDocs, doc, setDoc, getDoc, updateDoc, orderBy, runTransaction } from "firebase/firestore";
 import { signOut } from "firebase/auth";
 import { auth, db } from "../firebase.js";
-import { FaUserCircle, FaCog, FaSignOutAlt, FaPlus, FaComments, FaTrophy, FaRobot, FaUser, FaTimes, FaCar, FaMoneyBillWave, FaSun, FaPaperPlane, FaRoute, FaLeaf, FaStar, FaBell, FaHome, FaRoad, FaCalendarAlt, FaUsers, FaQuestionCircle, FaMapMarkerAlt, FaMoon, FaBullseye, FaBolt, FaFire, FaChartLine, FaMedal } from 'react-icons/fa';
+import { FaUserCircle, FaCog, FaSignOutAlt, FaPlus, FaComments, FaTrophy, FaRobot, FaUser, FaTimes, FaCar, FaMoneyBillWave, FaSun, FaPaperPlane, FaRoute, FaLeaf, FaStar, FaBell, FaHome, FaRoad, FaCalendarAlt, FaUsers, FaQuestionCircle, FaMapMarkerAlt, FaMoon, FaBullseye, FaBolt, FaFire, FaChartLine, FaMedal, FaBars } from 'react-icons/fa';
 import logo from "../assets/logo.png";
 import './Dashboard.css';
 import { useNavigate } from 'react-router-dom';
@@ -70,6 +70,7 @@ const Dashboard = () => {
   const [showShortcutsHelp, setShowShortcutsHelp] = useState(false);
   const [showTour, setShowTour] = useState(false);
   const [tourStep, setTourStep] = useState(0);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const tourSteps = [
     {
       title: 'Explore your dashboard',
@@ -96,9 +97,19 @@ const Dashboard = () => {
 
   const navigate = useNavigate();
 
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 768px)');
+    const onChange = () => setIsMobile(mq.matches);
+    onChange();
+    mq.addEventListener?.('change', onChange);
+    return () => mq.removeEventListener?.('change', onChange);
+  }, []);
+
   const mapContainerStyle = {
     width: '100%',
-    height: '300px',
+    height: isMobile ? '240px' : '300px',
     borderRadius: '12px'
   };
 
@@ -1603,7 +1614,7 @@ const Dashboard = () => {
   return (
     <div className={`dashboard-container theme-${theme}`}>
       {/* Sidebar */}
-      <div className="sidebar">
+      <div className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
         <div className="sidebar-header">
           <div className="logo">
             <img src={logo} alt="ColonyCarpool Logo" style={{ height: '30px' }} />
@@ -1659,6 +1670,8 @@ const Dashboard = () => {
           </div>
         </div>
       </div>
+      {/* Overlay for mobile sidebar */}
+      <div className={`sidebar-overlay ${sidebarOpen ? 'show' : ''}`} onClick={() => setSidebarOpen(false)}></div>
       
       {/* Main Content */}
       <div className="main-content">
@@ -1690,6 +1703,9 @@ const Dashboard = () => {
         )}
         {/* Header */}
         <div className="header">
+          <button className="hamburger-btn" onClick={() => setSidebarOpen(prev => !prev)} aria-label="Toggle menu">
+            <FaBars />
+          </button>
           <h1 className="page-title">
             {activeMenu === 'dashboard' && 'Dashboard'}
             {activeMenu === 'rides' && 'My Rides'}
