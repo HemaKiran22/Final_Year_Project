@@ -1,7 +1,11 @@
 {
-  "buildCommand": "npm ci && cd Frontend && npm ci && node ./node_modules/vite/bin/vite.js build",
+  "buildCommand": "cd Frontend && npm install && npm run build",
   "outputDirectory": "Frontend/dist",
   "framework": "vite",
-  "installCommand": "npm ci && cd Frontend && npm ci",
+  "installCommand": "npm install && cd Frontend && npm install",
   "devCommand": "cd Frontend && npm run dev -- --port $PORT"
+  ,
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
 }

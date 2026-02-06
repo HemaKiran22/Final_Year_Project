@@ -7,14 +7,14 @@ function toGeminiContents(messages = []) {
   }));
 }
 
-export default async function handler(req) {
-  import { GoogleGenerativeAI } from "@google/generative-ai";
+export default async function handler(req, res) {
+  const { GoogleGenerativeAI } = await import("@google/generative-ai");
 
   try {
     if (req.method !== 'POST') {
-      return new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405, headers: { 'content-type': 'application/json' } });
+      return res.status(405).json({ error: 'Method not allowed' });
     }
-    const body = await req.json().catch(() => ({}));
+    const body = (req.body && typeof req.body === 'object') ? req.body : {};
     const provider = (body.provider || 'openai').toLowerCase();
     const messages = Array.isArray(body.messages) ? body.messages : [];
     const model = body.model || (provider === 'google' ? (process.env.GOOGLE_MODEL || 'gemini-1.5-flash-latest') : 'gpt-4o-mini');
@@ -22,7 +22,7 @@ export default async function handler(req) {
     if (provider === 'openai') {
       const key = process.env.OPENAI_API_KEY;
       if (!key) {
-        return new Response(JSON.stringify({ error: 'OPENAI_API_KEY not set on server' }), { status: 400, headers: { 'content-type': 'application/json' } });
+        return res.status(400).json({ error: 'OPENAI_API_KEY not set on server' });
       }
       const resp = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
@@ -34,16 +34,43 @@ export default async function handler(req) {
       });
       const data = await resp.json();
       if (!resp.ok) {
-        return new Response(JSON.stringify({ error: data.error || data }), { status: resp.status, headers: { 'content-type': 'application/json' } });
+        return res.status(resp.status).json({ error: data.error || data });
       }
       const answer = data?.choices?.[0]?.message?.content || '';
-      return new Response(JSON.stringify({ answer }), { status: 200, headers: { 'content-type': 'application/json' } });
+      return res.status(200).json({ answer });
+    }
+
+    if (provider === 'groq') {
+      const key = process.env.GROQ_API_KEY;
+      if (!key) {
+        return res.status(400).json({ error: 'GROQ_API_KEY not set on server' });
+      }
+      const payload = {
+        model,
+        messages: messages.map(m => ({ role: m.role, content: String(m.content || '') })),
+        temperature: 0.5,
+        stream: false,
+      };
+      const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'authorization': `Bearer ${key}`,
+          'content-type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
+      const data = await resp.json();
+      if (!resp.ok) {
+        return res.status(resp.status).json({ error: data.error || data });
+      }
+      const answer = data?.choices?.[0]?.message?.content || '';
+      return res.status(200).json({ answer });
     }
 
     if (provider === 'google') {
       const key = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
       if (!key) {
-        return new Response(JSON.stringify({ error: 'GEMINI_API_KEY not set on server' }), { status: 400, headers: { 'content-type': 'application/json' } });
+        return res.status(400).json({ error: 'GEMINI_API_KEY not set on server' });
       }
       // Build a simple text prompt from chat history
       const prompt = messages.map(m => `${m.role === 'assistant' ? 'Assistant' : 'User'}: ${m.content}`).join('\n');
@@ -52,14 +79,14 @@ export default async function handler(req) {
         const mdl = genAI.getGenerativeModel({ model: model || 'gemini-pro' });
         const result = await mdl.generateContent(prompt);
         const answer = result?.response?.text?.() || '';
-        return new Response(JSON.stringify({ answer }), { status: 200, headers: { 'content-type': 'application/json' } });
+        return res.status(200).json({ answer });
       } catch (e) {
-        return new Response(JSON.stringify({ error: e?.message || String(e) }), { status: 500, headers: { 'content-type': 'application/json' } });
+        return res.status(500).json({ error: e?.message || String(e) });
       }
     }
 
-    return new Response(JSON.stringify({ error: 'Unsupported provider' }), { status: 400, headers: { 'content-type': 'application/json' } });
+    return res.status(400).json({ error: 'Unsupported provider' });
   } catch (err) {
-    return new Response(JSON.stringify({ error: String(err?.message || err) }), { status: 500, headers: { 'content-type': 'application/json' } });
+    return res.status(500).json({ error: String(err?.message || err) });
   }
 }

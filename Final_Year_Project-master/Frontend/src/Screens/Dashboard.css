@@ -379,7 +379,7 @@ body::before {
   color: var(--dark);
   border: 1px solid var(--light-gray);
 }
-}
+
 
 .section-header {
   display: flex;
