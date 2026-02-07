@@ -1,0 +1,14 @@
+/* Global mobile-friendly baseline */
+html { scroll-behavior: smooth; }
+body { -webkit-text-size-adjust: 100%; overflow-x: hidden; }
+img, video { max-width: 100%; height: auto; }
+button, a, input, select, textarea { touch-action: manipulation; }
+
+@media (max-width: 768px) {
+	:root {
+		--base-pad: 12px;
+	}
+	h1 { font-size: 1.6rem; }
+	h2 { font-size: 1.25rem; }
+	h3 { font-size: 1.1rem; }
+}

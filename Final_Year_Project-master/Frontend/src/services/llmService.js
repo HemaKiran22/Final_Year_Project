@@ -106,7 +106,7 @@ export async function askLLM(prompt, history = [], opts = {}) {
   ];
 
   // Dev shortcut: if explicitly set to 'direct', bypass server and call Gemini from browser
-  if (provider === 'google' && configuredUrl && configuredUrl.toLowerCase() === 'direct') {
+  if (provider === 'google' && configuredUrl && configuredUrl.toLowerCase() === 'direct' && !import.meta.env.PROD) {
     try { console.info('[llmService] Using Google Gemini direct mode'); } catch {}
     const browserKey = import.meta.env.VITE_GEMINI_API_KEY;
     if (!browserKey) {
@@ -121,7 +121,7 @@ export async function askLLM(prompt, history = [], opts = {}) {
   }
 
   // Dev shortcut: Groq direct (OpenAI-compatible) if configured
-  if (provider === 'groq' && configuredUrl && configuredUrl.toLowerCase() === 'direct') {
+  if (provider === 'groq' && configuredUrl && configuredUrl.toLowerCase() === 'direct' && !import.meta.env.PROD) {
     try { console.info('[llmService] Using Groq direct mode'); } catch {}
     const browserKey = import.meta.env.VITE_GROQ_API_KEY;
     if (!browserKey) {

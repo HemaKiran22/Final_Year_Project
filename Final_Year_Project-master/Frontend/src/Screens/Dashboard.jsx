@@ -94,6 +94,14 @@ const Dashboard = () => {
     },
   ];
   const shownNotifIdsRef = useRef(new Set());
+  // Refs to manage back-button behavior without stale state
+  const sidebarOpenRef = useRef(false);
+  const showPostRideFormRef = useRef(false);
+  const activeMenuRef = useRef('dashboard');
+  // Time picker (12-hour with AM/PM)
+  const [timeHour, setTimeHour] = useState('');
+  const [timeMinute, setTimeMinute] = useState('00');
+  const [timeAmPm, setTimeAmPm] = useState('AM');
 
   const navigate = useNavigate();
 
@@ -106,6 +114,54 @@ const Dashboard = () => {
     mq.addEventListener?.('change', onChange);
     return () => mq.removeEventListener?.('change', onChange);
   }, []);
+
+  // Keep refs synced with state for back-button handler
+  useEffect(() => { sidebarOpenRef.current = sidebarOpen; }, [sidebarOpen]);
+  useEffect(() => { showPostRideFormRef.current = showPostRideForm; }, [showPostRideForm]);
+  useEffect(() => { activeMenuRef.current = activeMenu; }, [activeMenu]);
+
+  // Mobile/device back button behavior: close overlays or return to Dashboard before leaving route
+  useEffect(() => {
+    const handlePopState = () => {
+      // Close sidebar if open
+      if (sidebarOpenRef.current) {
+        setSidebarOpen(false);
+        try { history.pushState(null, '', location.href); } catch {}
+        return;
+      }
+      // Close post-ride modal if open
+      if (showPostRideFormRef.current) {
+        setShowPostRideForm(false);
+        try { history.pushState(null, '', location.href); } catch {}
+        return;
+      }
+      // Navigate back to Dashboard tab from other tabs
+      if (activeMenuRef.current !== 'dashboard') {
+        setActiveMenu('dashboard');
+        try { history.pushState(null, '', location.href); } catch {}
+        return;
+      }
+      // Otherwise, allow normal back navigation (exit Dashboard route)
+    };
+
+    // Seed a sentinel history state so first back is handled in-app
+    try { history.pushState(null, '', location.href); } catch {}
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  // Initialize time picker to current time (rounded to next 5 minutes) when opening the form
+  useEffect(() => {
+    if (!showPostRideForm) return;
+    const now = new Date();
+    let h = now.getHours();
+    let m = now.getMinutes();
+    const rounded = Math.ceil(m / 5) * 5;
+    if (rounded === 60) { h = (h + 1) % 24; m = 0; } else { m = rounded; }
+    const ap = h >= 12 ? 'PM' : 'AM';
+    const h12 = h % 12 === 0 ? 12 : (h % 12);
+    applyTimeParts(String(h12), String(m).padStart(2, '0'), ap);
+  }, [showPostRideForm]);
 
   const mapContainerStyle = {
     width: '100%',
@@ -212,7 +268,13 @@ const Dashboard = () => {
         const docSnap = await getDoc(userRef);
 
         if (!docSnap.exists()) {
-          await setDoc(userRef, { moneySaved: 0, ridesShared: 0, averageRating: 0, totalRatings: 0 });
+          await setDoc(userRef, { status: 'pending_approval', moneySaved: 0, ridesShared: 0, averageRating: 0, totalRatings: 0, createdAt: new Date() });
+        }
+
+        const currentData = docSnap.exists() ? docSnap.data() : { status: 'pending_approval' };
+        if (currentData.status !== 'approved') {
+          navigate('/approval');
+          return;
         }
 
         const unsubscribeProfile = onSnapshot(userRef, (doc) => {
@@ -574,10 +636,41 @@ const Dashboard = () => {
     setNewRide(prev => ({ ...prev, [name]: value }));
   };
 
+  const to24h = (h12, m, ampm) => {
+    let h = parseInt(h12, 10) % 12;
+    if ((ampm || 'AM') === 'PM') h += 12;
+    return `${String(h).padStart(2, '0')}:${String(parseInt(m, 10) || 0).padStart(2, '0')}`;
+  };
+
+  const applyTimeParts = (h, m, ap) => {
+    setTimeHour(String(h));
+    setTimeMinute(String(m).padStart(2, '0'));
+    setTimeAmPm(ap);
+    const t = to24h(h, m, ap);
+    setNewRide(prev => ({ ...prev, time: t }));
+  };
+
   const handlePostRide = async (e) => {
     e.preventDefault();
     if (!userId) {
       alert("You must be logged in to post a ride.");
+      return;
+    }
+    // Validate date/time: must be in the future
+    try {
+      const [hh, mm] = String(newRide.time || '').split(':').map(x => parseInt(x, 10));
+      if (!newRide.date || isNaN(hh) || isNaN(mm)) {
+        alert('Please select a valid date and time.');
+        return;
+      }
+      const selected = new Date(`${newRide.date}T${String(hh).padStart(2,'0')}:${String(mm).padStart(2,'0')}:00`);
+      const now = new Date();
+      if (selected.getTime() <= now.getTime()) {
+        alert('Please choose a future time. Past times are not allowed.');
+        return;
+      }
+    } catch {
+      alert('Please select a valid date and time.');
       return;
     }
     try {
@@ -604,6 +697,9 @@ const Dashboard = () => {
         price: 0,
         vehicleType: 'car',
       });
+      setTimeHour('');
+      setTimeMinute('00');
+      setTimeAmPm('AM');
       setShowPostRideForm(false);
     } catch (e) {
       console.error("Error adding document: ", e);
@@ -1759,11 +1855,29 @@ const Dashboard = () => {
               <div className="form-group-inline">
                 <div className="form-group">
                   <label>Date:</label>
-                  <input type="date" name="date" value={newRide.date} onChange={handleInputChange} required />
+                  <input type="date" name="date" value={newRide.date} min={new Date().toISOString().split('T')[0]} onChange={handleInputChange} required />
                 </div>
                 <div className="form-group">
                   <label>Time:</label>
-                  <input type="time" name="time" value={newRide.time} onChange={handleInputChange} required />
+                  <div className="time-picker">
+                    <select aria-label="Hour" value={timeHour} onChange={(e) => applyTimeParts(e.target.value, timeMinute, timeAmPm)} required>
+                      <option value="" disabled>HH</option>
+                      {[...Array(12)].map((_, i) => {
+                        const h = String(i + 1);
+                        return <option key={h} value={h}>{h}</option>
+                      })}
+                    </select>
+                    <span className="time-sep">:</span>
+                    <select aria-label="Minute" value={timeMinute} onChange={(e) => applyTimeParts(timeHour, e.target.value, timeAmPm)} required>
+                      {['00','05','10','15','20','25','30','35','40','45','50','55'].map(m => (
+                        <option key={m} value={m}>{m}</option>
+                      ))}
+                    </select>
+                    <select aria-label="AM/PM" value={timeAmPm} onChange={(e) => applyTimeParts(timeHour, timeMinute, e.target.value)} required>
+                      <option value="AM">AM</option>
+                      <option value="PM">PM</option>
+                    </select>
+                  </div>
                 </div>
               </div>
               <div className="form-group">

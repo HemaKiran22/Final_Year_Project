@@ -20,13 +20,29 @@ const Login = () => {
 
   // Load saved credentials on mount
   useEffect(() => {
+    // If already authenticated, route based on approval status
+    const unsub = auth.onAuthStateChanged(async (u) => {
+      try {
+        if (u) {
+          const userDocRef = doc(db, 'users', u.uid);
+          const userDoc = await getDoc(userDocRef);
+          const status = userDoc.exists() ? userDoc.data()?.status : 'pending_approval';
+          if (status === 'approved') {
+            navigate('/dashboard', { replace: true });
+          } else {
+            navigate('/approval', { replace: true });
+          }
+        }
+      } catch {}
+    });
     const savedEmail = localStorage.getItem('rememberedEmail');
     const savedPassword = localStorage.getItem('rememberedPassword');
     if (savedEmail && savedPassword) {
       setLoginData({ email: savedEmail, password: savedPassword });
       setRememberMe(true);
     }
-  }, []);
+    return () => { try { unsub(); } catch {} };
+  }, [navigate]);
 
   const handleChange = (e) => {
     setLoginData({ ...loginData, [e.target.name]: e.target.value });
@@ -60,7 +76,7 @@ const Login = () => {
             localStorage.removeItem('rememberedPassword');
           }
           setMessage('Login successful! Redirecting...');
-          setTimeout(() => navigate('/dashboard'), 2000);
+          setTimeout(() => navigate('/dashboard', { replace: true }), 2000);
         } else {
           await signOut(auth);
           setMessage('Your account is pending admin approval. Please wait.');

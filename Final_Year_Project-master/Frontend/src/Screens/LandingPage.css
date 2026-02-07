@@ -24,9 +24,9 @@ body {
   top: 0;
   width: 100%;
   background: rgba(228, 233, 237, 0.95);
-  box-shadow: #0f172a;
+  box-shadow: 0 2px 12px rgba(15, 23, 42, 0.08);
   z-index: 1000;
-  padding: rem 0;
+  padding: 0.75rem 0;
   transition: all 0.3s ease;
 }
 
@@ -441,6 +441,34 @@ body {
   box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
 }
 
+
+/* Responsive: Mobile layout */
+@media (max-width: 768px) {
+  .nav-container { padding: 0 1rem; }
+  .menu-toggle { display: flex; }
+  .nav-links { display: none; position: fixed; top: 70px; right: 0; left: 0; background: #fff; flex-direction: column; gap: 0.75rem; padding: 1rem 1.25rem; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+  .nav-links.nav-active { display: flex; }
+  .auth-buttons { margin-left: 0; }
+
+  .hero { flex-direction: column; padding: 5rem 1rem 2rem; }
+  .hero-content { padding-right: 0; text-align: center; }
+  .hero-content h1 { font-size: 2rem; }
+  .hero-content p { font-size: 1rem; }
+  .hero-buttons { justify-content: center; flex-wrap: wrap; }
+  .hero-image { margin-top: 2rem; }
+  .phone-mockup { width: 240px; height: 480px; }
+
+  .stats { padding: 2.5rem 1rem; }
+  .stat-item h3 { font-size: 1.75rem; }
+  .features { padding: 3rem 1rem; }
+  .features h2 { font-size: 2rem; }
+  .features-container { flex-direction: column; }
+  .feature-content { padding: 1.25rem; }
+
+  .how-it-works { padding: 3rem 1rem; }
+  .steps { justify-content: center; }
+  .step { width: 100%; max-width: 320px; }
+}
 .testimonial-content {
   margin-bottom: 1.5rem;
   font-style: italic;

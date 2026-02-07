@@ -7,6 +7,8 @@ const Leaderboard = () => {
   const [leaderboardData, setLeaderboardData] = useState([]);
   const [activeFilter, setActiveFilter] = useState('ridesShared');
 
+  const formatMoney = (v) => `₹${(Number(v) || 0).toFixed(2)}`;
+
   useEffect(() => {
     const usersRef = collection(db, 'users');
     const q = query(usersRef, orderBy(activeFilter, 'desc'));
@@ -36,7 +38,7 @@ const Leaderboard = () => {
       case 'ridesShared':
         return `${user.ridesShared || 0} rides`;
       case 'moneySaved':
-        return `₹${user.moneySaved || 0}`;
+        return formatMoney(user.moneySaved);
       default:
         return user[activeFilter] || 0;
     }
@@ -157,7 +159,7 @@ const Leaderboard = () => {
                     {user.moneySaved > 0 && (
                       <span className="stat-item">
                         <span className="stat-icon">💰</span>
-                        ₹{user.moneySaved || 0}
+                        {formatMoney(user.moneySaved)}
                       </span>
                     )}
                   </p>

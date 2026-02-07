@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
+import { createUserWithEmailAndPassword, updateProfile, signOut } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 import './Signup.css';
@@ -50,10 +50,13 @@ const Signup = () => {
         createdAt: new Date()
       });
 
-      setMessage('Signup successful! Please wait for admin approval before logging in.');
+      setMessage('Signup successful! Your account is pending admin approval.');
       setFormData({ name: '', phoneNumber: '', housingSociety: '', flatNumber: '', email: '', password: '' });
       
-      setTimeout(() => navigate('/login'), 3000);
+      try {
+        await signOut(auth);
+      } catch {}
+      navigate('/approval');
 
     } catch (error) {
       console.error("Signup error:", error);

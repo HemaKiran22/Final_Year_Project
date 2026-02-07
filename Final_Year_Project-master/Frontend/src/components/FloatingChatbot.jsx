@@ -355,17 +355,6 @@ const FloatingChatbot = () => {
       '- Get notifications when someone joins or messages; track savings and leaderboard progress.\n' +
       "Try: 'Find rides to Kumbalagodu on 2026-01-03 around 12:00' or 'Book a ride to Kumbalagodu on 2026-01-03 around 12:00'."
     ),
-    'what is colony carpool': (
-      'Colony Carpool:\n' +
-      '- A community/campus carpool platform to share rides safely and efficiently.\n' +
-      '- Post rides (destination, date, time, seats, price) from Dashboard.\n' +
-      '- Find and join rides via the chatbot or suggested/clustered groups.\n' +
-      '- Smart clustering forms optimized groups and shows XAI explanations, savings, and CO₂ reduction.\n' +
-      '- Auto-book from a prompt when enabled, or list-only if you say “search/find/show”.\n' +
-      '- Chat with others: Private Chat with the driver and Group Chat to coordinate.\n' +
-      '- Get notifications when someone joins or messages; track savings and leaderboard progress.\n' +
-      "Try: 'Find rides to Kumbalagodu on 2026-01-03 around 12:00' or 'Book a ride to Kumbalagodu on 2026-01-03 around 12:00'."
-    ),
     // Account
     'how do i sign up?': (
       'Signup:\n- Go to Signup and create your account with email and password.\n- Verify your email if prompted.\n- After signup, you can post, find, and join rides.'

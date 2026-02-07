@@ -463,29 +463,36 @@
   }
 
   .leaderboard-header {
-    padding: 32px 24px;
+    padding: 24px 16px;
     margin-bottom: 24px;
   }
 
   .trophy-icon {
-    font-size: 3rem;
+    font-size: 2.6rem;
   }
 
   .leaderboard-title {
-    font-size: 1.8rem;
+    font-size: 1.6rem;
   }
 
   .leaderboard-subtitle {
-    font-size: 0.95rem;
+    font-size: 0.9rem;
   }
 
   .filter-tabs {
-    flex-direction: column;
+    flex-direction: row;
+    gap: 8px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 6px;
   }
 
   .filter-tab {
-    width: 100%;
+    flex: 0 0 auto;
+    min-width: 128px;
     justify-content: center;
+    padding: 10px 16px;
+    font-size: 0.95rem;
   }
 
   .podium-section {
@@ -494,34 +501,36 @@
 
   .podium-container {
     gap: 12px;
+    flex-direction: column;
+    align-items: center;
   }
 
   .podium-avatar {
-    width: 60px;
-    height: 60px;
-    font-size: 1.5rem;
+    width: 56px;
+    height: 56px;
+    font-size: 1.4rem;
   }
 
   .podium-avatar.champion {
-    width: 80px;
-    height: 80px;
-    font-size: 2rem;
+    width: 72px;
+    height: 72px;
+    font-size: 1.8rem;
   }
 
   .podium-base {
-    width: 80px;
+    width: 72px;
   }
 
   .podium-base.first {
-    height: 100px;
+    height: 88px;
   }
 
   .podium-base.second {
-    height: 80px;
+    height: 72px;
   }
 
   .podium-base.third {
-    height: 60px;
+    height: 56px;
   }
 
   .podium-name {
@@ -550,7 +559,7 @@
   }
 
   .leaderboard-list-modern {
-    padding: 20px 16px;
+    padding: 16px 12px;
   }
 
   .list-title {
@@ -558,8 +567,9 @@
   }
 
   .leaderboard-item-modern {
-    padding: 16px;
-    gap: 12px;
+    padding: 14px;
+    gap: 10px;
+    flex-wrap: wrap;
   }
 
   .rank-badge {
@@ -582,7 +592,7 @@
   }
 
   .user-name {
-    font-size: 1rem;
+    font-size: 0.95rem;
   }
 
   .user-stats {
@@ -591,9 +601,42 @@
   }
 
   .metric-number {
-    font-size: 1rem;
-    padding: 6px 16px;
+    font-size: 0.95rem;
+    padding: 6px 14px;
   }
+
+
+/* Extra-small phones */
+@media (max-width: 480px) {
+  .leaderboard-header { padding: 16px 12px; }
+  .trophy-icon { font-size: 2.2rem; }
+  .leaderboard-title { font-size: 1.4rem; }
+  .leaderboard-subtitle { font-size: 0.85rem; }
+  .filter-tabs { gap: 6px; }
+  .filter-tab { min-width: 110px; padding: 8px 14px; font-size: 0.9rem; }
+  .podium-avatar { width: 52px; height: 52px; font-size: 1.3rem; }
+  .podium-avatar.champion { width: 64px; height: 64px; font-size: 1.6rem; }
+  .crown-icon { top: -24px; font-size: 1.6rem; }
+  .rank-badge { width: 44px; height: 44px; }
+  .rank-number { font-size: 1.1rem; }
+  .user-avatar-small { width: 40px; height: 40px; font-size: 1rem; }
+  .metric-number { font-size: 0.9rem; padding: 6px 12px; }
+}
+  /* Move metric to new line for tight screens */
+  .metric-value {
+    width: 100%;
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 6px;
+  }
+
+  /* Tone down heavy animations on mobile for performance */
+  .trophy-icon,
+  .crown-icon,
+  .medal-badge {
+    animation: none;
+  }
+  .leaderboard-item-modern { animation: none; opacity: 1; }
 }
 
 @media (min-width: 769px) and (max-width: 1024px) {

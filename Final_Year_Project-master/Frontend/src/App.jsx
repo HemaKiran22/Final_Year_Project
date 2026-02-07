@@ -11,6 +11,7 @@ import SocietyFeed from './Screens/SocietyFeed';
 import Leaderboard from './Screens/Leaderboard';
 import RideChatbot from './Screens/RideChatbot';
 import PrivateChat from './Screens/PrivateChat';
+import ApprovalPending from './Screens/ApprovalPending';
 import GroupChat from './Screens/GroupChat';
 import FloatingChatbot from './components/FloatingChatbot';
 
@@ -25,6 +26,7 @@ function App() {
         <Route path="/signup" element={<Signup />} />
         <Route path="/login" element={<Login />} />
         <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/approval" element={<ApprovalPending />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/settings" element={<Settings />} />
         <Route path="/societyfeed" element={<SocietyFeed />} />

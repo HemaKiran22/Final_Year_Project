@@ -138,6 +138,7 @@ const PrivateChat = () => {
           toUserId: otherUserId,
           fromUserId: auth.currentUser.uid,
           chatId,
+          chatType: 'private',
           type: "message",
           text: newMessage,
           read: false,
@@ -173,12 +174,11 @@ const PrivateChat = () => {
         moneySaved: increment(moneySavedPerPerson || 0),
       });
 
-      // Update ride as accepted/completed by passenger
+      // Update ride as accepted by passenger (do not mark completed here)
       const rideRef = doc(db, "rides", ride.id);
       await updateDoc(rideRef, {
         status: "Accepted",
         passengers: arrayUnion(thisUserId),
-        isCompleted: true,
       });
 
       // Notify the ride owner (driver) on acceptance
@@ -200,9 +200,7 @@ const PrivateChat = () => {
         console.warn('Acceptance notification skipped:', notifyErr);
       }
 
-      // Don't show rating yet - wait for ride to be completed
-      // Navigate back to dashboard so the updated stats and completed ride reflect immediately
-      try { navigate('/dashboard'); } catch {}
+      // Stay in private chat after acceptance
     } catch (error) {
       console.error('Error accepting ride from chat:', error);
     } finally {

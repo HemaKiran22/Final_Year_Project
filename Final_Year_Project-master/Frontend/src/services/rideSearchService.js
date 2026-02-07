@@ -13,11 +13,17 @@ export async function searchRidesByQuery(db, q) {
   // q: { destination, dateISO, time24, timeWindowMinutes, minDriverRating }
   // Strategy: fetch Pending rides and filter client-side for destination/date/time/seats
   const ridesRef = collection(db, 'rides');
+  // Fetch both Pending and Forming rides to cover shared groups
   const pendingQ = query(ridesRef, where('status', '==', 'Pending'));
-  const snap = await getDocs(pendingQ);
-  const all = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  const formingQ = query(ridesRef, where('status', '==', 'Forming'));
+  const [snapPending, snapForming] = await Promise.all([getDocs(pendingQ), getDocs(formingQ)]);
+  const all = [...snapPending.docs, ...snapForming.docs].map(d => ({ id: d.id, ...d.data() }));
 
   const destLower = (q.destination || '').toLowerCase();
+  const destTokens = destLower
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .split(/\s+/)
+    .filter(t => t && t.length >= 3);
   const targetMinutes = q.time24 ? toMinutes(q.time24) : null;
   const windowMin = q.timeWindowMinutes || 30;
 
@@ -26,7 +32,11 @@ export async function searchRidesByQuery(db, q) {
     // Destination match (case-insensitive substring) if provided
     if (destLower) {
       const rideDestLower = (r.destination || '').toLowerCase();
-      if (!rideDestLower.includes(destLower)) return false;
+      const directMatch = rideDestLower.includes(destLower) || destLower.includes(rideDestLower);
+      const tokenMatch = destTokens.length
+        ? destTokens.some(tok => rideDestLower.includes(tok))
+        : false;
+      if (!directMatch && !tokenMatch) return false;
     }
     // Date match if provided
     if (q.dateISO) {

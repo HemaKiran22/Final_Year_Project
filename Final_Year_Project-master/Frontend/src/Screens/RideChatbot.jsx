@@ -11,8 +11,10 @@ import {
   serverTimestamp,
   arrayUnion,
   increment,
+  getDoc,
 } from "firebase/firestore";
 import { createOrGetPrivateChat } from "../services/rideActionService";
+import { searchRidesByQuery } from "../services/rideSearchService";
 import { onAuthStateChanged } from "firebase/auth";
 import { useNavigate } from "react-router-dom";
 import "./RideChatbot.css";
@@ -28,6 +30,24 @@ const RideChatbot = () => {
 
   const navigate = useNavigate();
 
+  const computeTrustHeuristic = (profile) => {
+    const idVerified = profile?.status === 'approved' ? 1 : 0;
+    const avgRating = Number(profile?.averageRating || 0);
+    const totalRatings = Number(profile?.totalRatings || 0);
+    const ridesCompleted = Number(profile?.ridesShared || 0);
+    const fields = ['phoneNumber','housingSociety','flatNumber','bio','vehicleType','emergencyContact'];
+    const filled = fields.filter(f => {
+      const val = profile?.[f];
+      return !!(val && String(val).trim().length > 0);
+    }).length;
+    const completeness = Math.round((filled / fields.length) * 100);
+    const score01 = 0.4 * idVerified + 0.3 * (avgRating / 5) + 0.2 * (Math.min(ridesCompleted, 20) / 20) + 0.1 * (completeness / 100);
+    let label = 'Neutral';
+    if (score01 < 0.4) label = 'Risky';
+    else if (score01 >= 0.7) label = 'Highly Trusted';
+    return { score: Math.round(score01 * 100), label };
+  };
+
   // Track logged-in user
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currUser) => {
@@ -36,21 +56,36 @@ const RideChatbot = () => {
     return () => unsubscribe();
   }, []);
 
-  // 🔎 Search rides from Firestore
+  // 🔎 Search rides using flexible matching (tokens + time window)
   const searchRides = async () => {
     try {
-      const q = query(
-        collection(db, "rides"),
-        where("destination", "==", destination),
-        where("date", "==", date),
-        where("time", "==", time)
-      );
-      const querySnapshot = await getDocs(q);
-      const results = [];
-      querySnapshot.forEach((docSnap) => {
-        results.push({ id: docSnap.id, ...docSnap.data() });
+      const results = await searchRidesByQuery(db, {
+        destination,
+        dateISO: date,
+        time24: time,
+        timeWindowMinutes: 30,
       });
-      setRides(results);
+      // Enrich each ride with driver profile info (ratings + trust label)
+      const enriched = [];
+      for (const r of results) {
+        let driverAverageRating = null;
+        let driverTotalRatings = null;
+        let trustLabel = null;
+        let trustScore = null;
+        try {
+          if (r.driverId) {
+            const uSnap = await getDoc(doc(db, 'users', r.driverId));
+            const profile = uSnap.exists() ? uSnap.data() : {};
+            driverAverageRating = Number(profile.averageRating || 0);
+            driverTotalRatings = Number(profile.totalRatings || 0);
+            const t = computeTrustHeuristic(profile);
+            trustLabel = t.label;
+            trustScore = t.score;
+          }
+        } catch {}
+        enriched.push({ ...r, driverAverageRating, driverTotalRatings, trustLabel, trustScore });
+      }
+      setRides(enriched);
       setStep(3);
     } catch (err) {
       console.error("Error fetching rides:", err);
@@ -121,12 +156,10 @@ const RideChatbot = () => {
   const startPrivateChat = async (ride) => {
     if (!user) return;
     try {
-      const chatDoc = await addDoc(collection(db, "chats"), {
-        participants: [user.uid, ride.driverId],
-        rideId: ride.id,
-        createdAt: serverTimestamp(),
-      });
-      navigate(`/privatechat/${chatDoc.id}`);
+      const res = await createOrGetPrivateChat(db, auth, ride);
+      if (res.ok && res.chatId) {
+        navigate(`/privatechat/${res.chatId}`);
+      }
     } catch (err) {
       console.error("Error creating chat:", err);
     }
@@ -286,6 +319,16 @@ const RideChatbot = () => {
                         <div className="driver-info">
                           <h4 className="driver-name">{ride.driverName || 'Driver'}</h4>
                           <p className="ride-status">🟢 Available Now</p>
+                          <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginTop: 6 }}>
+                            <span title="Average Rating" style={{ fontSize: '0.9rem', color: '#374151' }}>
+                              ⭐ {typeof ride.driverAverageRating === 'number' ? ride.driverAverageRating.toFixed(1) : '—'} ({ride.driverTotalRatings ?? 0})
+                            </span>
+                            {ride.trustLabel && (
+                              <span style={{ padding: '2px 8px', borderRadius: 12, background: '#eef2ff', color: '#3730a3', fontSize: '0.78rem' }} title={`Trust ${ride.trustScore ?? ''}%`}>
+                                {ride.trustLabel}
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
                       <div className="ride-details">

@@ -716,6 +716,25 @@ body::before {
   gap: 15px;
 }
 
+/* Time picker styles */
+.time-picker {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--light-gray);
+  padding: 8px 10px;
+  border-radius: 9999px;
+}
+.time-picker select {
+  appearance: none;
+  border: 1px solid var(--light-gray);
+  background: var(--card-bg);
+  color: var(--dark);
+  border-radius: 9999px;
+  padding: 8px 12px;
+}
+.time-sep { font-weight: 700; color: var(--gray); }
+
 .post-ride-submit-btn {
   width: 100%;
   padding: 12px;
@@ -798,7 +817,7 @@ body::before {
 @media (max-width: 768px) {
   /* Off-canvas sidebar pattern */
   .sidebar {
-    width: 260px;
+    width: min(300px, 85vw);
     left: 0;
     top: 0;
     transform: translateX(-100%);
@@ -808,10 +827,26 @@ body::before {
     transform: translateX(0);
   }
 
+  /* When the mobile sidebar is open, show labels and align items */
+  .sidebar.open .menu-text,
+  .sidebar.open .menu-label,
+  .sidebar.open .logo-text {
+    display: inline;
+  }
+  .sidebar.open .menu-item {
+    justify-content: flex-start;
+  }
+  .sidebar.open .menu-icon {
+    margin-right: 12px;
+  }
+
   .main-content {
     margin-left: 0;
     width: 100%;
+    padding: 12px;
   }
+  .form-group-inline { grid-template-columns: 1fr; }
+  .time-picker { width: 100%; justify-content: center; }
 
   .header {
     gap: 10px;
