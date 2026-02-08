@@ -1,4 +1,5 @@
 import { collection, getDocs, query, where, doc, getDoc } from 'firebase/firestore';
+import { resolveRideStatus, getParticipantIds } from './rideActionService';
 
 function toMinutes(time24) {
   const [h, m] = time24.split(':').map(Number);
@@ -29,6 +30,10 @@ export async function searchRidesByQuery(db, q) {
 
   // Filter
   let candidates = all.filter(r => {
+    // Only show open rides
+    const rideStatus = resolveRideStatus(r);
+    if (rideStatus !== 'open') return false;
+
     // Destination match (case-insensitive substring) if provided
     if (destLower) {
       const rideDestLower = (r.destination || '').toLowerCase();
@@ -42,10 +47,11 @@ export async function searchRidesByQuery(db, q) {
     if (q.dateISO) {
       if ((r.date || '') !== q.dateISO) return false;
     }
-    // Seats available
-    const taken = Array.isArray(r.passengers) ? r.passengers.length : 0;
-    const seats = r.seats || 1;
-    if (taken >= seats) return false;
+    // Seats available (backward-compatible)
+    const totalSeats = Number(r.totalSeats || r.seats) || 1;
+    const pIds = getParticipantIds(r);
+    const available = r.availableSeats != null ? Number(r.availableSeats) : (totalSeats - pIds.length);
+    if (available <= 0) return false;
     // Time window if provided
     if (targetMinutes != null && r.time) {
       const candMin = toMinutes(r.time);
@@ -76,14 +82,17 @@ export async function searchRidesByQuery(db, q) {
   // If no candidates and a time was provided, relax time constraint: return nearest times on same date/destination
   if (candidates.length === 0 && targetMinutes != null) {
     const relaxed = all.filter(r => {
+      const rideStatus = resolveRideStatus(r);
+      if (rideStatus !== 'open') return false;
       if (destLower) {
         const rideDestLower = (r.destination || '').toLowerCase();
         if (!rideDestLower.includes(destLower)) return false;
       }
       if (q.dateISO && (r.date || '') !== q.dateISO) return false;
-      const taken = Array.isArray(r.passengers) ? r.passengers.length : 0;
-      const seats = r.seats || 1;
-      if (taken >= seats) return false;
+      const totalSeats = Number(r.totalSeats || r.seats) || 1;
+      const pIds = getParticipantIds(r);
+      const available = r.availableSeats != null ? Number(r.availableSeats) : (totalSeats - pIds.length);
+      if (available <= 0) return false;
       return true; // include rides even if time is missing; we'll sort with missing times last
     });
     relaxed.sort((a, b) => {

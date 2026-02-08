@@ -240,7 +240,7 @@ const FloatingChatbot = () => {
           dtStart ? `DTSTART:${dtStart}` : '',
           dtEnd ? `DTEND:${dtEnd}` : '',
           `SUMMARY:${title}`,
-          `DESCRIPTION:Driver ${ride.driverName || ''} • Price ₹${Number(ride.price || 0)} • Seats ${ride.seats || ''}`,
+          `DESCRIPTION:Driver ${ride.driverName || ''} • Price ₹${Number(ride.price || 0)} • Seats ${ride.totalSeats || ride.seats || ''}`,
           'END:VEVENT',
           'END:VCALENDAR'
         ].filter(Boolean).join('\r\n');
@@ -267,8 +267,12 @@ const FloatingChatbot = () => {
         const diff = Math.abs(timeToMinutes(ride.time) - timeToMinutes(q.time24));
         parts.push(`~${diff} min from your time`);
       }
-      const left = (ride.seats || 1) - (Array.isArray(ride.passengers) ? ride.passengers.length : 0);
+      const totalSeats = Number(ride.totalSeats || ride.seats) || 1;
+      const participants = Array.isArray(ride.participants) ? ride.participants : (Array.isArray(ride.passengers) ? ride.passengers : []);
+      const left = ride.availableSeats != null ? Number(ride.availableSeats) : (totalSeats - participants.length);
+      const rideStatus = ride.rideStatus || 'open';
       parts.push(`${left} seat(s) left`);
+      if (rideStatus === 'closed') parts.push('Closed');
       if (ride.driverAverageRating != null) parts.push(`${ride.driverAverageRating.toFixed(1)}★ driver`);
       return parts.join(' · ');
     };

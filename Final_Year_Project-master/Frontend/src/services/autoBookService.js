@@ -1,6 +1,6 @@
 import { runTransaction, doc, addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { searchRidesByQuery } from './rideSearchService';
-import { createOrGetPrivateChat } from './rideActionService';
+import { createOrGetPrivateChat, resolveRideStatus, getParticipantIds } from './rideActionService';
 
 export async function autoBookBestRide(db, auth, q, userNameHint) {
   const rides = await searchRidesByQuery(db, q);
@@ -27,20 +27,43 @@ export async function autoBookBestRide(db, auth, q, userNameHint) {
         throw new Error('Ride no longer exists.');
       }
       const rideData = rideSnap.data();
-      const seats = Number(rideData.seats) || 0;
-      const passengersArr = Array.isArray(rideData.passengers) ? rideData.passengers : [];
 
-      if (passengersArr.includes(user.uid)) {
+      // Check rideStatus using shared helper
+      const rideStatus = resolveRideStatus(rideData);
+      if (rideStatus === 'closed') throw new Error('This ride is closed and no longer accepting passengers.');
+      if (rideStatus === 'completed') throw new Error('This ride has already been completed.');
+      if (rideStatus === 'cancelled') throw new Error('This ride has been cancelled.');
+
+      const seats = Number(rideData.totalSeats || rideData.seats) || 0;
+      const passengersArr = Array.isArray(rideData.passengers) ? rideData.passengers : [];
+      const pIds = getParticipantIds(rideData);
+
+      if (passengersArr.includes(user.uid) || pIds.includes(user.uid)) {
         throw new Error('You already joined this ride.');
       }
-      if (seats > 0 && passengersArr.length >= seats) {
+
+      const currentAvailable = rideData.availableSeats != null ? Number(rideData.availableSeats) : (seats - pIds.length);
+      if (currentAvailable <= 0) {
         throw new Error('No seats left in this ride.');
       }
 
-      transaction.update(rideRef, {
-        passengers: [...passengersArr, user.uid],
-        status: 'Pending',
-      });
+      const newPassengers = [...passengersArr, user.uid];
+      const rawParticipants = Array.isArray(rideData.participants) ? rideData.participants : [];
+      const isObjModel = rawParticipants.length > 0 && typeof rawParticipants[0] === 'object' && rawParticipants[0]?.userId;
+      const newParticipantEntry = { userId: user.uid, joinedAt: new Date().toISOString() };
+      const newParticipants = isObjModel || rawParticipants.length === 0
+        ? [...rawParticipants.filter(p => (typeof p === 'object' ? p.userId : p) !== user.uid), newParticipantEntry]
+        : [...new Set([...rawParticipants, user.uid])];
+      const newAvailable = currentAvailable - 1;
+
+      const updates = {
+        passengers: newPassengers,
+        participants: newParticipants,
+        availableSeats: newAvailable,
+      };
+      if (newAvailable <= 0) updates.rideStatus = 'closed';
+
+      transaction.update(rideRef, updates);
     });
 
     // Create or get a private chat with the driver, post a system message, and notify driver with deep link

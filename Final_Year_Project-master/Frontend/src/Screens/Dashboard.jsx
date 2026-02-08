@@ -6,7 +6,7 @@ import { FaUserCircle, FaCog, FaSignOutAlt, FaPlus, FaComments, FaTrophy, FaRobo
 import logo from "../assets/logo.png";
 import './Dashboard.css';
 import { useNavigate } from 'react-router-dom';
-import { createOrGetPrivateChat, joinRideById } from '../services/rideActionService';
+import { createOrGetPrivateChat, joinRideById, leaveRide, cancelRideByCreator, markNoShow, resolveRideStatus, getParticipantIds, parseRideDateTime, LATE_CANCEL_WINDOW_MS } from '../services/rideActionService';
 
 import HelpSupport from './HelpSupport';
 
@@ -417,13 +417,19 @@ const Dashboard = () => {
 
     const now = new Date();
     const suggested = allRides
-      .filter(ride => 
-        ride.driverId !== userId && // Not my ride
-        ride.community === userCommunity && // Same community
-        ride.status === 'Pending' && // Available
-        new Date(`${ride.date} ${ride.time}`) > now && // Future ride
-        (Array.isArray(ride.passengers) ? ride.passengers.length : 0) < (ride.seats || 1) // Has seats
-      )
+      .filter(ride => {
+        const rideStatus = resolveRideStatus(ride);
+        const pIds = getParticipantIds(ride);
+        const totalSeats = Number(ride.totalSeats || ride.seats) || 1;
+        const availableSeats = ride.availableSeats != null ? Number(ride.availableSeats) : (totalSeats - pIds.length);
+        return (
+          ride.driverId !== userId && // Not my ride
+          ride.community === userCommunity && // Same community
+          rideStatus === 'open' && // Only open rides (excludes cancelled/closed/completed)
+          new Date(`${ride.date} ${ride.time}`) > now && // Future ride
+          availableSeats > 0 // Has seats
+        );
+      })
       .sort((a, b) => {
         const timeA = new Date(`${a.date} ${a.time}`);
         const timeB = new Date(`${b.date} ${b.time}`);
@@ -477,18 +483,28 @@ const Dashboard = () => {
       return;
     }
     try {
+      const totalSeats = Number(newRide.seats);
+      const [hh24, mm24] = String(newRide.time || '').split(':').map(x => parseInt(x, 10));
+      const startTime = new Date(`${newRide.date}T${String(hh24).padStart(2,'0')}:${String(mm24).padStart(2,'0')}:00`).toISOString();
       await addDoc(collection(db, "rides"), {
         ...newRide,
         from: userProfile?.housingSociety || 'Brigade',
         driverName: userName,
         driverId: userId,
+        createdBy: userId,
         createdAt: new Date(),
+        startTime: startTime,
         price: Number(newRide.price),
-        seats: Number(newRide.seats),
+        seats: totalSeats,
+        totalSeats: totalSeats,
+        availableSeats: totalSeats - 1,
         vehicleType: newRide.vehicleType,
         isCompleted: false,
         status: 'Pending',
-        passengers: [],
+        rideStatus: 'open',
+        passengers: [userId],
+        participants: [{ userId: userId, joinedAt: new Date().toISOString() }],
+        cancellationLog: [],
       });
       alert('Ride posted successfully!');
       setNewRide({
@@ -562,6 +578,7 @@ const Dashboard = () => {
         await updateDoc(rideRef, {
           isCompleted: true,
           status: 'Completed',
+          rideStatus: 'completed',
         });
 
         // Determine who to rate based on role
@@ -639,7 +656,21 @@ const Dashboard = () => {
       case 'Pending': return '#fbbf24';
       case 'Accepted': return '#60a5fa';
       case 'Completed': return '#34d399';
+      case 'open': return '#22c55e';
+      case 'closed': return '#ef4444';
+      case 'completed': return '#34d399';
+      case 'cancelled': return '#6b7280';
       default: return '#9ca3af';
+    }
+  };
+
+  const getRideStatusLabel = (status) => {
+    switch(status) {
+      case 'open': return '● Open';
+      case 'closed': return '● Closed';
+      case 'completed': return '✓ Completed';
+      case 'cancelled': return '✕ Cancelled';
+      default: return status || 'Open';
     }
   };
 
@@ -665,12 +696,28 @@ const Dashboard = () => {
       return;
     }
     const passengers = Array.isArray(ride.passengers) ? ride.passengers : [];
-    if (passengers.includes(userId)) {
+    const pIds = getParticipantIds(ride);
+    if (passengers.includes(userId) || pIds.includes(userId)) {
       alert('You have already joined this ride.');
       return;
     }
-    const remainingSeats = (Number(ride.seats) || 0) - passengers.length;
-    if (remainingSeats <= 0) {
+    // Check ride status
+    const rideStatus = resolveRideStatus(ride);
+    if (rideStatus === 'closed') {
+      alert('This ride has been closed by the creator.');
+      return;
+    }
+    if (rideStatus === 'completed') {
+      alert('This ride has already been completed.');
+      return;
+    }
+    if (rideStatus === 'cancelled') {
+      alert('This ride has been cancelled.');
+      return;
+    }
+    const totalSeats = Number(ride.totalSeats || ride.seats) || 0;
+    const availableSeats = ride.availableSeats != null ? Number(ride.availableSeats) : (totalSeats - pIds.length);
+    if (availableSeats <= 0) {
       alert('No seats available on this ride.');
       return;
     }
@@ -678,7 +725,7 @@ const Dashboard = () => {
     try {
       const res = await joinRideById(db, auth, ride, userName);
       if (res.ok) {
-        alert(`Successfully joined the ride to ${ride.destination}! ${remainingSeats - 1} seat(s) remaining.`);
+        alert(`Successfully joined the ride to ${ride.destination}! ${availableSeats - 1} seat(s) remaining.`);
       } else {
         alert(res.message || 'Could not join this ride.');
       }
@@ -689,12 +736,138 @@ const Dashboard = () => {
     }
   };
 
+  const handleCloseRide = async (ride) => {
+    if (!userId || ride.driverId !== userId) {
+      alert('Only the ride creator can close this ride.');
+      return;
+    }
+    if (!window.confirm('Close this ride? No new passengers will be able to join, but chat will remain active.')) return;
+    try {
+      const rideRef = doc(db, 'rides', ride.id);
+      await updateDoc(rideRef, { rideStatus: 'closed' });
+      alert('Ride closed successfully. No new passengers can join.');
+    } catch (e) {
+      console.error('Error closing ride:', e);
+      alert('Failed to close ride.');
+    }
+  };
+
+  const handleReopenRide = async (ride) => {
+    if (!userId || ride.driverId !== userId) {
+      alert('Only the ride creator can reopen this ride.');
+      return;
+    }
+    const totalSeats = Number(ride.totalSeats || ride.seats) || 1;
+    const pIds = getParticipantIds(ride);
+    const available = totalSeats - pIds.length;
+    if (available <= 0) {
+      alert('Cannot reopen — all seats are filled.');
+      return;
+    }
+    try {
+      const rideRef = doc(db, 'rides', ride.id);
+      await updateDoc(rideRef, { rideStatus: 'open', availableSeats: available });
+      alert('Ride reopened! Passengers can now join.');
+    } catch (e) {
+      console.error('Error reopening ride:', e);
+      alert('Failed to reopen ride.');
+    }
+  };
+
+  /* ── Co-rider leaves ride (Scenarios 1, 3, 4) ── */
+  const [leavingRideId, setLeavingRideId] = useState(null);
+
+  const handleLeaveRide = async (ride) => {
+    if (!userId) return;
+    const rideStatus = resolveRideStatus(ride);
+    if (rideStatus === 'completed') { alert('Cannot leave a completed ride.'); return; }
+    if (rideStatus === 'cancelled') { alert('This ride is already cancelled.'); return; }
+
+    // Warn about late cancellation
+    const startDT = parseRideDateTime(ride);
+    const isLate = startDT && (startDT.getTime() - Date.now()) > 0 && (startDT.getTime() - Date.now()) <= LATE_CANCEL_WINDOW_MS;
+    const msg = isLate
+      ? 'This is a LATE cancellation (< 15 min before ride). Your trust score will be penalized. Continue?'
+      : 'Leave this ride? The creator will be notified.';
+    if (!window.confirm(msg)) return;
+
+    setLeavingRideId(ride.id);
+    try {
+      const res = await leaveRide(db, auth, ride, userName);
+      if (res.ok) {
+        alert(res.cancelType === 'late'
+          ? 'You left the ride. A late cancellation penalty was applied to your trust score.'
+          : 'You have left the ride successfully.');
+      } else {
+        alert(res.message || 'Could not leave ride.');
+      }
+    } catch (e) {
+      alert(e?.message || 'Failed to leave ride.');
+    } finally {
+      setLeavingRideId(null);
+    }
+  };
+
+  /* ── Creator cancels entire ride (Scenario 2) ── */
+  const handleCancelRide = async (ride) => {
+    if (!userId || (ride.createdBy || ride.driverId) !== userId) {
+      alert('Only the ride creator can cancel the entire ride.');
+      return;
+    }
+    if (!window.confirm('Cancel this ride entirely? ALL passengers will be notified and the ride will be removed from search.')) return;
+    try {
+      const res = await cancelRideByCreator(db, auth, ride, userName);
+      if (res.ok) {
+        alert('Ride cancelled. All passengers have been notified.');
+      } else {
+        alert(res.message || 'Could not cancel ride.');
+      }
+    } catch (e) {
+      alert(e?.message || 'Failed to cancel ride.');
+    }
+  };
+
+  /* ── No-show marking (Scenario 5) ── */
+  const [showNoShowModal, setShowNoShowModal] = useState(false);
+  const [noShowRide, setNoShowRide] = useState(null);
+
+  const handleOpenNoShowModal = (ride) => {
+    setNoShowRide(ride);
+    setShowNoShowModal(true);
+  };
+
+  const handleMarkNoShow = async (targetUserId) => {
+    if (!noShowRide) return;
+    try {
+      const res = await markNoShow(db, auth, noShowRide, targetUserId);
+      if (res.ok) {
+        alert('No-show recorded. A strong trust penalty has been applied.');
+      } else {
+        alert(res.message || 'Could not mark no-show.');
+      }
+    } catch (e) {
+      alert(e?.message || 'Failed to mark no-show.');
+    }
+    setShowNoShowModal(false);
+    setNoShowRide(null);
+  };
+
+  const getRideStatus = (ride) => {
+    return resolveRideStatus(ride);
+  };
+
   const renderMyRideCard = (ride) => {
     const passengers = Array.isArray(ride.passengers) ? ride.passengers : [];
-    const totalSeats = Number(ride.seats) || 1;
-    const remainingSeats = totalSeats - passengers.length;
+    const pIds = getParticipantIds(ride);
+    const totalSeats = Number(ride.totalSeats || ride.seats) || 1;
+    const availableSeats = ride.availableSeats != null ? Number(ride.availableSeats) : (totalSeats - pIds.length);
     const costPerPerson = totalSeats > 0 ? (Number(ride.price) || 0) / totalSeats : 0;
-    const seatsFilled = passengers.length;
+    const seatsFilled = pIds.length;
+    const rideStatus = getRideStatus(ride);
+    const isCreator = (ride.createdBy || ride.driverId) === userId;
+    const isCoRider = !isCreator && (passengers.includes(userId) || pIds.includes(userId));
+    const startDT = parseRideDateTime(ride);
+    const rideStarted = startDT && startDT.getTime() <= Date.now();
 
     return (
     <div key={ride.id} className="ride-card">
@@ -704,8 +877,8 @@ const Dashboard = () => {
           <div className="driver-name">You</div>
         </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <span className="status-chip" style={{ background: getStatusColor(ride.status || 'Pending'), color: 'white', padding: '4px 12px', borderRadius: '12px', fontSize: '12px', fontWeight: '600' }}>
-                {ride.status || 'Pending'}
+              <span className={`status-chip ride-status-${rideStatus}`} style={{ background: getStatusColor(rideStatus), color: 'white', padding: '4px 12px', borderRadius: '12px', fontSize: '12px', fontWeight: '600' }}>
+                {getRideStatusLabel(rideStatus)}
               </span>
               <div className="ride-date">{ride.date} at {ride.time}</div>
             </div>
@@ -735,15 +908,15 @@ const Dashboard = () => {
         </div>
 
         {/* Seat occupancy indicator - hide for completed rides */}
-        {!ride.isCompleted && ride.status !== 'Completed' && (
+        {rideStatus !== 'completed' && (
         <div className="seat-indicator">
           <div className="seat-indicator-bar">
             <div className="seat-indicator-fill" style={{ width: `${totalSeats > 0 ? (seatsFilled / totalSeats) * 100 : 0}%` }}></div>
           </div>
           <div className="seat-indicator-text">
             <span>{seatsFilled}/{totalSeats} seats filled</span>
-            <span className={`seats-remaining ${remainingSeats === 0 ? 'full' : remainingSeats <= 1 ? 'low' : ''}`}>
-              {remainingSeats === 0 ? 'Full' : `${remainingSeats} seat${remainingSeats > 1 ? 's' : ''} available`}
+            <span className={`seats-remaining ${availableSeats === 0 ? 'full' : availableSeats <= 1 ? 'low' : ''}`}>
+              {availableSeats === 0 ? 'Full' : `${availableSeats} seat${availableSeats > 1 ? 's' : ''} available`}
             </span>
           </div>
         </div>
@@ -751,8 +924,22 @@ const Dashboard = () => {
       </div>
       
       <div className="ride-actions">
-        {ride.isCompleted ? (
-          <span className="ride-confirmed">Confirmed!</span>
+        {rideStatus === 'cancelled' ? (
+          <span className="ride-cancelled-label">Ride Cancelled</span>
+        ) : rideStatus === 'completed' || ride.isCompleted ? (
+          <>
+            <span className="ride-confirmed">✓ Completed</span>
+            {/* No-show button for creator after ride completion */}
+            {isCreator && pIds.filter(uid => uid !== userId).length > 0 && (
+              <button
+                className="btn btn-noshow"
+                onClick={() => handleOpenNoShowModal(ride)}
+                style={{ marginLeft: '10px' }}
+              >
+                Mark No-Show
+              </button>
+            )}
+          </>
         ) : (
           <>
             <button className="btn btn-primary" onClick={() => handleConfirmRide(ride)}>Confirm Ride</button>
@@ -765,7 +952,39 @@ const Dashboard = () => {
             </button>
           </>
         )}
-        {ride.driverId && userId && ride.driverId !== userId && (
+
+        {/* Creator actions: Close / Reopen / Cancel */}
+        {isCreator && rideStatus !== 'completed' && rideStatus !== 'cancelled' && !ride.isCompleted && (
+          <>
+            {rideStatus === 'open' && (
+              <button className="btn btn-close-ride" onClick={() => handleCloseRide(ride)} style={{ marginLeft: '10px' }}>
+                Close Ride
+              </button>
+            )}
+            {rideStatus === 'closed' && (
+              <button className="btn btn-reopen-ride" onClick={() => handleReopenRide(ride)} style={{ marginLeft: '10px' }}>
+                Reopen Ride
+              </button>
+            )}
+            <button className="btn btn-cancel-ride" onClick={() => handleCancelRide(ride)} style={{ marginLeft: '10px' }}>
+              Cancel Ride
+            </button>
+          </>
+        )}
+
+        {/* Co-rider: Leave Ride (only before completion/cancellation, only if not started) */}
+        {isCoRider && rideStatus !== 'completed' && rideStatus !== 'cancelled' && !ride.isCompleted && (
+          <button
+            className="btn btn-leave-ride"
+            onClick={() => handleLeaveRide(ride)}
+            disabled={leavingRideId === ride.id}
+            style={{ marginLeft: '10px' }}
+          >
+            {leavingRideId === ride.id ? 'Leaving...' : 'Leave Ride'}
+          </button>
+        )}
+
+        {ride.driverId && userId && ride.driverId !== userId && rideStatus !== 'cancelled' && (
           <button 
             className="btn btn-secondary"
             onClick={() => handleOpenPrivateChat(ride)}
@@ -774,6 +993,7 @@ const Dashboard = () => {
             Private Chat
           </button>
         )}
+        {rideStatus !== 'cancelled' && (
         <button 
           className="btn btn-secondary"
           onClick={() => navigate(`/groupchat/${ride.id}`)}
@@ -781,6 +1001,7 @@ const Dashboard = () => {
         >
           Group Chat
         </button>
+        )}
       </div>
     </div>
     );
@@ -1100,21 +1321,29 @@ const Dashboard = () => {
                 <div className="rides-grid">
                   {suggestedRides.map(ride => {
                     const passengers = Array.isArray(ride.passengers) ? ride.passengers : [];
-                    const totalSeats = Number(ride.seats) || 1;
-                    const remainingSeats = totalSeats - passengers.length;
+                    const pIds = getParticipantIds(ride);
+                    const totalSeats = Number(ride.totalSeats || ride.seats) || 1;
+                    const availableSeats = ride.availableSeats != null ? Number(ride.availableSeats) : (totalSeats - pIds.length);
                     const costPerPerson = totalSeats > 0 ? (Number(ride.price) || 0) / totalSeats : 0;
-                    const isFull = remainingSeats <= 0;
-                    const alreadyJoined = passengers.includes(userId);
+                    const isFull = availableSeats <= 0;
+                    const alreadyJoined = passengers.includes(userId) || pIds.includes(userId);
                     const isJoining = joiningRideId === ride.id;
+                    const rideStatus = getRideStatus(ride);
+                    const isClosed = rideStatus === 'closed';
 
                     return (
-                    <div key={ride.id} className={`ride-card suggested-ride ${isFull ? 'ride-full' : ''}`}>
+                    <div key={ride.id} className={`ride-card suggested-ride ${isFull ? 'ride-full' : ''} ${isClosed ? 'ride-closed' : ''}`}>
                       <div className="ride-header">
                         <div className="ride-driver">
                           <div className="driver-avatar">{ride.driverName?.charAt(0) || 'U'}</div>
                           <div className="driver-name">{ride.driverName || 'Driver'}</div>
                         </div>
-                        <div className="ride-date">{ride.date} at {ride.time}</div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span className={`status-chip ride-status-${rideStatus}`} style={{ background: getStatusColor(rideStatus), color: 'white', padding: '3px 10px', borderRadius: '10px', fontSize: '11px', fontWeight: '600' }}>
+                            {getRideStatusLabel(rideStatus)}
+                          </span>
+                          <div className="ride-date">{ride.date} at {ride.time}</div>
+                        </div>
                       </div>
                       <div className="ride-details">
                         <div className="ride-route">
@@ -1141,26 +1370,26 @@ const Dashboard = () => {
                         {/* Seat occupancy indicator */}
                         <div className="seat-indicator">
                           <div className="seat-indicator-bar">
-                            <div className="seat-indicator-fill" style={{ width: `${totalSeats > 0 ? (passengers.length / totalSeats) * 100 : 0}%` }}></div>
+                            <div className="seat-indicator-fill" style={{ width: `${totalSeats > 0 ? ((totalSeats - availableSeats) / totalSeats) * 100 : 0}%` }}></div>
                           </div>
                           <div className="seat-indicator-text">
-                            <span>{passengers.length}/{totalSeats} seats filled</span>
-                            <span className={`seats-remaining ${isFull ? 'full' : remainingSeats <= 1 ? 'low' : ''}`}>
-                              {isFull ? 'Full' : `${remainingSeats} seat${remainingSeats > 1 ? 's' : ''} left`}
+                            <span>{totalSeats - availableSeats}/{totalSeats} seats filled</span>
+                            <span className={`seats-remaining ${isFull ? 'full' : availableSeats <= 1 ? 'low' : ''}`}>
+                              {isFull ? 'Full' : `${availableSeats} seat${availableSeats > 1 ? 's' : ''} left`}
                             </span>
                           </div>
                         </div>
                       </div>
                       <div className="ride-actions">
                         <button 
-                          className={`btn ${alreadyJoined ? 'btn-secondary' : 'btn-primary'} ${isFull && !alreadyJoined ? 'btn-disabled' : ''}`}
-                          onClick={() => !isFull && !alreadyJoined && !isJoining && handleJoinRide(ride)}
-                          disabled={isFull || alreadyJoined || isJoining}
-                          title={isFull ? 'No seats available' : alreadyJoined ? 'Already joined' : 'Join this ride'}
+                          className={`btn ${alreadyJoined ? 'btn-secondary' : 'btn-primary'} ${(isFull || isClosed) && !alreadyJoined ? 'btn-disabled' : ''}`}
+                          onClick={() => !isFull && !isClosed && !alreadyJoined && !isJoining && handleJoinRide(ride)}
+                          disabled={isFull || isClosed || alreadyJoined || isJoining}
+                          title={isClosed ? 'Ride closed by creator' : isFull ? 'No seats available' : alreadyJoined ? 'Already joined' : 'Join this ride'}
                         >
-                          {isJoining ? 'Joining...' : alreadyJoined ? '✓ Joined' : isFull ? 'Ride Full' : 'Join Ride'}
+                          {isJoining ? 'Joining...' : alreadyJoined ? '✓ Joined' : isClosed ? 'Ride Closed' : isFull ? 'Ride Full' : 'Join Ride'}
                         </button>
-                        {!isFull && !alreadyJoined && (
+                        {!isFull && !isClosed && !alreadyJoined && (
                           <button 
                             className="btn btn-secondary"
                             onClick={() => createOrGetPrivateChat(db, auth, ride).then(chatId => chatId && navigate(`/privatechat/${chatId}`))}
@@ -1411,6 +1640,40 @@ const Dashboard = () => {
               </div>
               <button type="submit" className="post-ride-submit-btn">Post Ride</button>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* No-Show Modal */}
+      {showNoShowModal && noShowRide && (
+        <div className="form-modal-overlay" onClick={() => { setShowNoShowModal(false); setNoShowRide(null); }}>
+          <div className="form-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '450px' }}>
+            <button className="close-btn" onClick={() => { setShowNoShowModal(false); setNoShowRide(null); }}>
+              <FaTimes />
+            </button>
+            <h2 style={{ marginBottom: '10px' }}>🚫 Mark No-Show</h2>
+            <p style={{ marginBottom: '20px', color: '#666', fontSize: '14px' }}>
+              Select a co-rider who did not show up. A strong trust penalty will be applied.
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {getParticipantIds(noShowRide)
+                .filter(uid => uid !== userId)
+                .map(uid => (
+                  <button
+                    key={uid}
+                    className="btn btn-noshow-select"
+                    onClick={() => handleMarkNoShow(uid)}
+                    style={{ padding: '12px 16px', borderRadius: '8px', border: '1px solid #e5e7eb', background: '#fff', cursor: 'pointer', textAlign: 'left', fontSize: '14px', transition: 'all 0.2s' }}
+                    onMouseEnter={e => { e.currentTarget.style.background = '#fef2f2'; e.currentTarget.style.borderColor = '#ef4444'; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.borderColor = '#e5e7eb'; }}
+                  >
+                    👤 User: {uid.slice(0, 8)}…
+                  </button>
+                ))}
+              {getParticipantIds(noShowRide).filter(uid => uid !== userId).length === 0 && (
+                <p style={{ color: '#9ca3af' }}>No other participants to mark.</p>
+              )}
+            </div>
           </div>
         </div>
       )}

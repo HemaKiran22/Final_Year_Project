@@ -898,6 +898,120 @@ body::before {
   width: 100%;
 }
 
+/* Ride Status Badges */
+.ride-status-open {
+  background: #22c55e !important;
+}
+.ride-status-closed {
+  background: #ef4444 !important;
+}
+.ride-status-completed {
+  background: #34d399 !important;
+}
+.ride-status-cancelled {
+  background: #6b7280 !important;
+}
+.btn-close-ride {
+  background: #ef4444;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.btn-close-ride:hover {
+  background: #dc2626;
+  transform: translateY(-1px);
+}
+.btn-reopen-ride {
+  background: #22c55e;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.btn-reopen-ride:hover {
+  background: #16a34a;
+  transform: translateY(-1px);
+}
+.btn-cancel-ride {
+  background: #991b1b;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.btn-cancel-ride:hover {
+  background: #7f1d1d;
+  transform: translateY(-1px);
+}
+.btn-leave-ride {
+  background: #f97316;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.btn-leave-ride:hover {
+  background: #ea580c;
+  transform: translateY(-1px);
+}
+.btn-leave-ride:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+.btn-noshow {
+  background: #7c3aed;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.btn-noshow:hover {
+  background: #6d28d9;
+  transform: translateY(-1px);
+}
+.ride-cancelled-label {
+  color: #6b7280;
+  font-weight: 600;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.ride-cancelled-label::before {
+  content: '🚫';
+}
+.ride-card.ride-closed {
+  opacity: 0.7;
+  border-color: #fca5a5;
+}
+.ride-card.ride-cancelled {
+  opacity: 0.5;
+  border-color: #d1d5db;
+  background: #f9fafb;
+}
+
 /* Feature Cards */
 .feature-card {
   background: var(--card-bg);
