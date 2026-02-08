@@ -41,7 +41,7 @@ const PrivateChat = () => {
 
   useEffect(scrollToBottom, [messages]);
 
-  // Fetch messages in real-time
+  // Fetch messages in real-time + show browser popup on new incoming messages
   useEffect(() => {
     if (!chatId) return;
 
@@ -50,9 +50,26 @@ const PrivateChat = () => {
       orderBy("createdAt", "asc")
     );
 
+    const notifiedIds = new Set();
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const msgs = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
       setMessages(msgs);
+      // Trigger popup only for newly added messages from the other user
+      snapshot.docChanges().forEach((chg) => {
+        if (chg.type !== 'added') return;
+        const data = chg.doc.data();
+        if (!data?.senderId || data.senderId === auth.currentUser?.uid) return;
+        if (notifiedIds.has(chg.doc.id)) return;
+        notifiedIds.add(chg.doc.id);
+        if ('Notification' in window) {
+          if (Notification.permission === 'default') Notification.requestPermission();
+          if (Notification.permission === 'granted') {
+            try {
+              new Notification('New private message', { body: data.text || 'You received a new message', icon: '/logo.png' });
+            } catch {}
+          }
+        }
+      });
     });
 
     return () => unsubscribe();

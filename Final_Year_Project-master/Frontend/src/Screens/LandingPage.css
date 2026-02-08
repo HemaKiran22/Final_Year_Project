@@ -14,8 +14,11 @@ body {
   color: #333;
 }
 
+:root { --nav-height: 88px; }
+
 .landing-page {
   overflow-x: hidden;
+  padding-top: var(--nav-height);
 }
 
 /* Navigation */
@@ -26,7 +29,7 @@ body {
   background: rgba(228, 233, 237, 0.95);
   box-shadow: 0 2px 12px rgba(15, 23, 42, 0.08);
   z-index: 1000;
-  padding: 0.75rem 0;
+  padding: 0.5rem 0;
   transition: all 0.3s ease;
 }
 
@@ -63,6 +66,8 @@ body {
 .nav-links a:hover {
   color: #4CAF50;
 }
+
+.logo-img { height: 64px; width: auto; }
 
 .logo-icon {
     display: flex
@@ -444,13 +449,16 @@ body {
 
 /* Responsive: Mobile layout */
 @media (max-width: 768px) {
+  .landing-page { --nav-height: 72px; }
   .nav-container { padding: 0 1rem; }
   .menu-toggle { display: flex; }
-  .nav-links { display: none; position: fixed; top: 70px; right: 0; left: 0; background: #fff; flex-direction: column; gap: 0.75rem; padding: 1rem 1.25rem; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+  .nav-links { display: none; position: fixed; top: var(--nav-height); right: 0; left: 0; background: #fff; flex-direction: column; gap: 0.75rem; padding: 1rem 1.25rem; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
   .nav-links.nav-active { display: flex; }
   .auth-buttons { margin-left: 0; }
 
-  .hero { flex-direction: column; padding: 5rem 1rem 2rem; }
+  .logo-img { height: 40px; }
+
+  .hero { flex-direction: column; padding: 6rem 1rem 2rem; }
   .hero-content { padding-right: 0; text-align: center; }
   .hero-content h1 { font-size: 2rem; }
   .hero-content p { font-size: 1rem; }

@@ -219,7 +219,142 @@
 .info-row { display: flex; align-items: center; justify-content: space-between; color: #374151; }
 
 @media (max-width: 768px) {
-  .profile-card { padding: 20px; border-radius: 0; }
-  .profile-info h1 { font-size: 2rem; }
-  .profile-metric-card .metric-content span { font-size: 1.6rem; }
+  .page-container {
+    padding: 12px;
+    align-items: flex-start;
+  }
+
+  .profile-card {
+    padding: 18px 14px;
+    border-radius: 14px;
+  }
+
+  .avatar-ring {
+    width: 90px;
+    height: 90px;
+  }
+
+  .profile-info h1 {
+    font-size: 1.5rem;
+  }
+
+  .profile-info .editable-input {
+    font-size: 1.5rem;
+    padding: 6px 10px;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .profile-email {
+    font-size: 0.9rem;
+  }
+
+  .info-chips {
+    gap: 6px;
+  }
+
+  .chip {
+    font-size: 0.8rem;
+    padding: 4px 8px;
+  }
+
+  .profile-metrics-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .profile-metric-card {
+    padding: 14px 16px;
+  }
+
+  .profile-metric-card .metric-content span {
+    font-size: 1.5rem;
+  }
+
+  .cards-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .profile-details-section {
+    padding: 14px;
+  }
+
+  /* Edit form mobile fix */
+  .edit-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .edit-grid .field.full {
+    grid-column: 1;
+  }
+
+  .edit-grid input,
+  .edit-grid textarea {
+    font-size: 16px; /* prevents iOS zoom */
+    padding: 10px;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .edit-grid label {
+    font-size: 0.82rem;
+  }
+
+  .edit-btn, .save-btn {
+    width: 100%;
+    text-align: center;
+    padding: 12px 20px;
+    font-size: 0.95rem;
+  }
+
+  .trust-meter-ring {
+    width: 48px;
+    height: 48px;
+  }
+
+  .trust-meter-inner {
+    width: 36px;
+    height: 36px;
+    font-size: 0.85rem;
+  }
+
+  .completeness-section {
+    margin-bottom: 14px;
+  }
+}
+
+@media (max-width: 420px) {
+  .profile-card {
+    padding: 14px 10px;
+  }
+
+  .avatar-ring {
+    width: 72px;
+    height: 72px;
+  }
+
+  .profile-info h1 {
+    font-size: 1.3rem;
+  }
+
+  .profile-info .editable-input {
+    font-size: 1.3rem;
+  }
+
+  .profile-metric-card .metric-content span {
+    font-size: 1.3rem;
+  }
+
+  .info-row {
+    font-size: 0.9rem;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  .profile-details p {
+    font-size: 0.9rem;
+    word-break: break-word;
+  }
 }

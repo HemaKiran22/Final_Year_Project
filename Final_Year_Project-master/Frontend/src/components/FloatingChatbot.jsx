@@ -1,11 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { FaComments, FaTimes, FaPaperPlane, FaRobot, FaMinus } from 'react-icons/fa';
 import './FloatingChatbot.css';
 import { askLLM } from '../services/llmService';
 import { db, auth } from '../firebase';
 import { parseRideQuery } from '../services/nlpAgent';
 import { searchRidesByQuery } from '../services/rideSearchService';
-import { clusterRides, formatClusterResults } from '../services/clusteringService';
 import { autoBookBestRide } from '../services/autoBookService';
 import { joinRideById, createOrGetPrivateChat } from '../services/rideActionService';
 import { createRideFromPrompt } from '../services/ridePostService';
@@ -17,12 +16,53 @@ const FloatingChatbot = () => {
   const [isMinimized, setIsMinimized] = useState(false);
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState([
-    { from: 'bot', text: 'Hi! I\'m your AI assistant for carpool and app help. Ask me anything or pick a quick help topic.' },
+    { from: 'bot', text: 'Hi! I\'m your AI assistant for carpool and app help. Ask me anything!' },
   ]);
   const [isLoading, setIsLoading] = useState(false);
   // Guided post-ride wizard state
-  const [postWizard, setPostWizard] = useState(null); // { step, dest, date, time, seats, price, vehicleType }
+  const [postWizard, setPostWizard] = useState(null);
   const navigate = useNavigate();
+
+  // Allow external code to open the chatbot via custom event
+  useEffect(() => {
+    const handler = () => { setIsOpen(true); setIsMinimized(false); };
+    window.addEventListener('open-chatbot', handler);
+    return () => window.removeEventListener('open-chatbot', handler);
+  }, []);
+
+  // Format bot text: convert \n to <br>, - bullets to styled list items
+  const formatBotText = (text) => {
+    if (!text) return text;
+    const lines = String(text).split('\n');
+    return lines.map((line, i) => {
+      const trimmed = line.trim();
+      if (!trimmed) return <br key={i} />;
+      // Bullet lines starting with - or •
+      if (/^[-•]\s/.test(trimmed)) {
+        return (
+          <div key={i} style={{ display: 'flex', gap: 6, marginTop: 4, marginLeft: 4 }}>
+            <span style={{ color: '#6366f1', fontWeight: 700, flexShrink: 0 }}>•</span>
+            <span>{trimmed.replace(/^[-•]\s*/, '')}</span>
+          </div>
+        );
+      }
+      // Numbered lines like "1. something"
+      if (/^\d+[.)]\s/.test(trimmed)) {
+        const num = trimmed.match(/^(\d+)[.)]\s*/)[1];
+        return (
+          <div key={i} style={{ display: 'flex', gap: 6, marginTop: 4, marginLeft: 4 }}>
+            <span style={{ color: '#6366f1', fontWeight: 700, flexShrink: 0, minWidth: 16 }}>{num}.</span>
+            <span>{trimmed.replace(/^\d+[.)]\s*/, '')}</span>
+          </div>
+        );
+      }
+      // Header-like lines ending with ':'
+      if (trimmed.endsWith(':') && trimmed.length < 60) {
+        return <div key={i} style={{ fontWeight: 700, marginTop: i > 0 ? 8 : 0, color: '#1e293b' }}>{trimmed}</div>;
+      }
+      return <div key={i} style={{ marginTop: i > 0 ? 2 : 0 }}>{line}</div>;
+    });
+  };
     const greetingResponse = (text) => {
       const t = text.trim().toLowerCase();
       const greetings = ['hi', 'hello', 'hey', 'hai', 'hii', 'yo', 'sup'];
@@ -31,7 +71,7 @@ const FloatingChatbot = () => {
           "Hi! I'm your AI assistant for the carpool app.\n" +
           "- To find rides: e.g., 'Find rides to Kumbalagodu on 2026-01-03 around 12:00'.\n" +
           "- To auto-book: e.g., 'Book a ride to Kumbalagodu on 2026-01-03 around 12:00'.\n" +
-          "- Use quick help buttons below for common tasks."
+          "- Ask me anything about the app!"
         );
       }
       return null;
@@ -64,7 +104,6 @@ const FloatingChatbot = () => {
           'How this website works:\n' +
           '- Post a ride from Dashboard: destination, date, time, seats, price.\n' +
           '- Find and join rides using the chatbot: search or auto-book from your prompt.\n' +
-          '- Accept rides from clustered suggestions with explanations and savings.\n' +
           '- Chat with others: Private Chat with driver or Group Chat to coordinate.\n' +
           '- Notifications alert you when someone joins or messages; check the bell on Dashboard.\n' +
           '- Savings and leaderboard update as you complete rides.\n' +
@@ -118,7 +157,7 @@ const FloatingChatbot = () => {
           '- Save time: find nearest-time rides and auto-book from your prompt.\n' +
           '- Eco-friendly: reduce CO₂ vs solo travel with optimized carpooling.\n' +
           '- Safer coordination: Private Chat with drivers and Group Chat for logistics.\n' +
-          '- Smart suggestions: clustered groups with XAI explanations and tips.\n' +
+          '- Smart suggestions: ride recommendations with savings tips.\n' +
           '- Stay informed: notifications for joins/messages; dashboard overview.\n' +
           '- Community: Society Feed and Leaderboard to track savings and progress.'
         );
@@ -141,7 +180,7 @@ const FloatingChatbot = () => {
         return (
           "I'm doing great and ready to help with rides and app support!\n" +
           "- Ask me to find or book a ride.\n" +
-          "- Or use the quick help buttons below for common tasks."
+          "- Or ask me anything about the app!"
         );
       }
       return null;
@@ -150,9 +189,9 @@ const FloatingChatbot = () => {
       const t = (text || '').trim();
       return (
         (t ? `You asked: "${t}"\n` : '') +
-        'I\'m optimized for carpool tasks: finding/booking rides, chats, notifications, clustering, and savings.\n' +
+        'I\'m optimized for carpool tasks: finding/booking rides, chats, notifications, and savings.\n' +
         '- If this is about rides, include destination/date/time (e.g., "Find rides to Kumbalagodu on 2026-01-03 around 12:00").\n' +
-        '- For app help, try Quick help buttons below.\n' +
+        '- For app help, just ask me directly!\n' +
         'If general knowledge is needed, ensure the AI backend is configured; I\'ll still do my best to guide you.'
       );
     };
@@ -262,8 +301,7 @@ const FloatingChatbot = () => {
           'Colony Carpool:\n' +
           '- A community/campus carpool platform to share rides safely and efficiently.\n' +
           '- Post rides (destination, date, time, seats, price) from Dashboard.\n' +
-          '- Find and join rides via the chatbot or suggested/clustered groups.\n' +
-          '- Smart clustering forms optimized groups and shows XAI explanations, savings, and CO₂ reduction.\n' +
+          '- Find and join rides via the chatbot or suggested rides.\n' +
           '- Auto-book from a prompt when enabled, or list-only if you say “search/find/show”.\n' +
           '- Chat with others: Private Chat with the driver and Group Chat to coordinate.\n' +
           '- Get notifications when someone joins or messages; track savings and leaderboard progress.\n' +
@@ -283,7 +321,7 @@ const FloatingChatbot = () => {
     'how to join a ride?': (
       'Join a ride:\n' +
       '- Use this chatbot: search and tap Accept on a ride card.\n' +
-      '- Or on Dashboard, use Suggested/Clustered rides and accept there.\n' +
+      '- Or on Dashboard, use Suggested rides and accept there.\n' +
       '- You must be logged in and seats must be available.'
     ),
     'notifications not showing': (
@@ -338,7 +376,6 @@ const FloatingChatbot = () => {
       'How this website works:\n' +
       '- Post a ride from Dashboard: destination, date, time, seats, price.\n' +
       '- Find and join rides using the chatbot: search or auto-book from your prompt.\n' +
-      '- Accept rides from clustered suggestions with explanations and savings.\n' +
       '- Chat with others: Private Chat with driver or Group Chat to coordinate.\n' +
       '- Notifications alert you when someone joins or messages; check the bell on Dashboard.\n' +
       '- Savings and leaderboard update as you complete rides.\n' +
@@ -348,8 +385,7 @@ const FloatingChatbot = () => {
       'Colony Carpool:\n' +
       '- A community/campus carpool platform to share rides safely and efficiently.\n' +
       '- Post rides (destination, date, time, seats, price) from Dashboard.\n' +
-      '- Find and join rides via the chatbot or suggested/clustered groups.\n' +
-      '- Smart clustering forms optimized groups and shows XAI explanations, savings, and CO₂ reduction.\n' +
+      '- Find and join rides via the chatbot or suggested rides.\n' +
       '- Auto-book from a prompt when enabled, or list-only if you say “search/find/show”.\n' +
       '- Chat with others: Private Chat with the driver and Group Chat to coordinate.\n' +
       '- Get notifications when someone joins or messages; track savings and leaderboard progress.\n' +
@@ -391,7 +427,7 @@ const FloatingChatbot = () => {
       'Savings:\n- View cumulative savings on Dashboard/Leaderboard.\n- Completing rides updates your savings automatically.'
     ),
     'per person cost': (
-      'Per person cost:\n- Computed from total price and number of passengers.\n- Shown on clustered group cards and ride details.'
+      'Per person cost:\n- Computed from total price and number of passengers.\n- Shown on ride cards and ride details.'
     ),
     'leaderboard score': (
       'Leaderboard score:\n- Based on rides completed, savings, and participation.\n- Improves as you share more rides.'
@@ -418,9 +454,9 @@ const FloatingChatbot = () => {
     'share contact in chat': (
       'Share contact:\n- You can share your phone/email in Private Chat if comfortable.\n- Avoid posting personal data publicly.'
     ),
-    // Clustering & XAI
-    'what are clustered groups': (
-      'Clustered groups:\n- Our algorithm groups nearby riders by route/time to optimize sharing.\n- Cards show seats, per-person cost, and explanations.'
+    // Ride suggestions
+    'what are ride suggestions': (
+      'Ride suggestions:\n- We suggest rides based on your route, time, and destination.\n- Check the Suggested Rides section on Dashboard.'
     ),
     'why this group suggested': (
       'Why suggested:\n- Based on time window, route proximity, capacity, and savings.\n- See “Why this group?” for XAI explanation and tips.'
@@ -534,15 +570,12 @@ const FloatingChatbot = () => {
     'change theme': (
       'Theme:\n- UI theming can be added; request a dark/light theme toggle.\n- We can store preference in localStorage.'
     ),
-    'customize quick help': (
-      'Quick help customization:\n- We can add buttons for your common tasks and map them to canned responses.'
-    ),
     'add greeting message': (
       'Greeting:\n- The assistant replies to greetings with usage tips.\n- You can edit the message in the chatbot component.'
     ),
     // App Features
     'what is dashboard': (
-      'Dashboard:\n- Central hub to post rides, view suggested/clustered groups, open chats, and see notifications.'
+      'Dashboard:\n- Central hub to post rides, view suggested rides, open chats, and see notifications.'
     ),
     'what is society feed': (
       'Society Feed:\n- Community posts and updates; ask for help, share info, and coordinate beyond individual rides.'
@@ -559,7 +592,7 @@ const FloatingChatbot = () => {
       '- Save time: find nearest-time rides and auto-book from your prompt.\n' +
       '- Eco-friendly: reduce CO₂ vs solo travel with optimized carpooling.\n' +
       '- Safer coordination: Private Chat with drivers and Group Chat for logistics.\n' +
-      '- Smart suggestions: clustered groups with XAI explanations and tips.\n' +
+      '- Smart suggestions: ride recommendations with savings tips.\n' +
       '- Stay informed: notifications for joins/messages; dashboard overview.\n' +
       '- Community: Society Feed and Leaderboard to track savings and progress.'
     ),
@@ -642,104 +675,6 @@ const FloatingChatbot = () => {
       }
     } catch (e) {
       setMessages(prev => [...prev, { from: 'bot', text: e?.message || 'Unable to start private chat.' }]);
-    }
-  };
-
-  // --- Clustering groups inside chatbot ---
-  const fetchActiveRidesForClustering = async () => {
-    try {
-      const { collection, getDocs, query, where } = await import('firebase/firestore');
-      const ridesRef = collection(db, 'rides');
-      const q = query(ridesRef, where('status', '==', 'Pending'));
-      const snap = await getDocs(q);
-      const now = new Date();
-      const all = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      const active = all.filter(r => {
-        const taken = Array.isArray(r.passengers) ? r.passengers.length : 0;
-        const seats = Number(r.seats || 1);
-        if (taken >= seats) return false;
-        const dt = new Date(`${r.date || ''} ${r.time || ''}`);
-        return dt > now;
-      });
-      return active.map(ride => ({
-        id: ride.id,
-        community: ride.community || 'Community',
-        destination: ride.destination || 'Destination',
-        date: ride.date,
-        time: ride.time,
-        userName: ride.driverName || 'Driver',
-        driverId: ride.driverId || null,
-        driverName: ride.driverName || '',
-        seats: Number(ride.seats || 1),
-        passengers: Array.isArray(ride.passengers) ? ride.passengers : [],
-        pickupLat: ride.pickupLat || 12.8420,
-        pickupLng: ride.pickupLng || 77.6611,
-        pickupLocation: ride.community || 'Community',
-        vehicleType: ride.vehicleType || 'car',
-      }));
-    } catch (e) {
-      console.warn('Failed to fetch rides for clustering:', e);
-      return [];
-    }
-  };
-
-  const listClustersInChat = async () => {
-    try {
-      const rides = await fetchActiveRidesForClustering();
-      if (!rides.length) {
-        setMessages(prev => [...prev, { from: 'bot', text: 'No active groups right now. Try posting a ride or searching a different time.' }]);
-        return;
-      }
-      const clusters = clusterRides(rides, { maxGroupSize: 3, timeWindowMinutes: 15, algorithm: 'kmeans' });
-      const formatted = formatClusterResults(clusters, { timeWindowMinutes: 15, proximityKm: 2 });
-      setMessages(prev => [...prev, { from: 'bot', type: 'clusters', text: 'Here are current Ride Groups:', groups: formatted }]);
-    } catch (e) {
-      setMessages(prev => [...prev, { from: 'bot', text: e?.message || 'Unable to list clustering groups.' }]);
-    }
-  };
-
-  const handleJoinClusterGroup = async (group) => {
-    if (!auth?.currentUser) {
-      setMessages(prev => [...prev, { from: 'bot', text: 'Please login to join a group.' }]);
-      try { navigate('/login'); } catch {}
-      return;
-    }
-    const userId = auth.currentUser.uid;
-    const userNameHint = auth?.currentUser?.displayName || auth?.currentUser?.email || '';
-
-    const candidate = Array.isArray(group?.rideOptions)
-      ? group.rideOptions.find(o => (o.seatsRemaining || 0) > 0 && o.rideId)
-      : null;
-
-    try {
-      if (candidate) {
-        const res = await joinRideById(db, auth, { id: candidate.rideId, driverId: candidate.driverId, destination: group?.route?.split(' → ')[1] || '' }, userNameHint);
-        setMessages(prev => [...prev, { from: 'bot', text: res.ok ? 'Joined this group successfully. Open Group Chat from Dashboard.' : (res.message || 'Could not join this group.') }]);
-      } else {
-        const { addDoc, collection, serverTimestamp } = await import('firebase/firestore');
-        const [community, destination] = (group.route || '').split(' → ').map(s => (s || '').trim());
-        const newRide = {
-          driverId: null,
-          driverName: 'Shared Ride',
-          isShared: true,
-          community: community || 'Community',
-          destination: destination || 'Destination',
-          date: group.date,
-          time: group.time,
-          vehicleType: group.vehicleType || 'car',
-          seats: group.capacity || 3,
-          price: group.estimatedCost || 0,
-          status: 'Forming',
-          passengers: [userId],
-          createdAt: serverTimestamp(),
-          createdBy: userId,
-        };
-        const created = await addDoc(collection(db, 'rides'), newRide);
-        setMessages(prev => [...prev, { from: 'bot', text: 'You have successfully joined the group. Open Group Chat from Dashboard.', rideId: created.id }]);
-      }
-    } catch (e) {
-      const msg = e?.code === 'permission-denied' ? 'You do not have permission to join this group.' : (e?.message || 'Could not join this group.');
-      setMessages(prev => [...prev, { from: 'bot', text: msg }]);
     }
   };
 
@@ -957,19 +892,6 @@ const FloatingChatbot = () => {
           if (idx >= 0) { const next = [...prev]; next[idx] = resultMsg; return next; }
           return [...prev, resultMsg];
         });
-        return;
-      }
-
-      // User asks for clustering groups
-      const lowClusters = text.toLowerCase();
-      if (lowClusters.includes('cluster') || lowClusters.includes('ride groups') || lowClusters.includes('groups available') || lowClusters.includes('clustering groups')) {
-        setIsLoading(false);
-        setMessages(prev => {
-          const idx = prev.findIndex(m => m.from === 'bot' && m.text === 'Thinking…');
-          if (idx >= 0) { const next = [...prev]; next.splice(idx, 1); return next; }
-          return prev;
-        });
-        await listClustersInChat();
         return;
       }
 
@@ -1207,28 +1129,6 @@ const FloatingChatbot = () => {
                           );
                         })}
                       </div>
-                    ) : m.type === 'clusters' ? (
-                      <div>
-                        <div style={{ marginBottom: 8 }}>{m.text}</div>
-                        {Array.isArray(m.groups) && m.groups.map((g) => (
-                          <div key={`grp-${g.groupId}`} className="ride-card" style={{ border: '1px solid #ddd', borderRadius: 8, padding: 10, marginBottom: 8 }}>
-                            <div style={{ fontWeight: 600 }}>{g.route}</div>
-                            <div>Date: {g.date} · Time: {g.time} · {g.vehicleLabel}</div>
-                            <div>Members: {g.members} · Seats left: {g.remainingSeats} · CO₂ saved ~{g.co2SavingPct}%</div>
-                            <div>Cost/person: ₹{Number(g.costPerPerson || 0).toFixed(0)}</div>
-                            <div style={{ color:'#6b7280', fontSize:12, marginTop:4 }}>
-                              {g.explanations?.counterfactual || ''}
-                            </div>
-                            <div style={{ display:'flex', gap:8, marginTop:8 }}>
-                              <button className="btn btn-primary" onClick={() => handleJoinClusterGroup(g)}>Accept</button>
-                              {g.rideOptions?.[0]?.driverId && (
-                                <button className="btn btn-secondary" onClick={() => handlePrivateChat({ id: g.rideOptions[0].rideId, driverId: g.rideOptions[0].driverId, destination: g.route.split(' → ')[1] })}>Private Chat</button>
-                              )}
-                              <button className="btn" onClick={() => downloadICS({ id: `grp-${g.groupId}`, destination: g.route.split(' → ')[1], date: g.date, time: g.time, driverName: g.rideOptions?.[0]?.driverName || 'Shared', price: g.costPerPerson })}>Add to Calendar</button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
                     ) : m.type === 'booked-ride' ? (
                       <div>
                         <div style={{ marginBottom: 8 }}>{m.text}</div>
@@ -1246,27 +1146,17 @@ const FloatingChatbot = () => {
                         )}
                       </div>
                     ) : (
-                      m.text
+                      <span className="bot-formatted">{formatBotText(m.text)}</span>
                     )}
                   </div>
                 ))}
-              </div>
-
-              <div className="chat-quick">
-                <span>Quick help:</span>
-                <button onClick={() => quickAsk('Cannot login')}>Login</button>
-                <button onClick={() => quickAsk('How to join a ride?')}>Join ride</button>
-                <button onClick={() => quickAsk('Notifications not showing')}>Notifications</button>
-                <button onClick={() => quickAsk('Map not loading')}>Map</button>
-                <button onClick={() => quickAsk('I need human help')}>Need human</button>
-                <button onClick={() => quickAsk('Payment or savings incorrect')}>Payment</button>
-                <button onClick={() => quickAsk('Cannot find a ride')}>Find ride</button>
-                <button onClick={() => quickAsk('Change my destination or time')}>Change ride</button>
-                <button onClick={() => quickAsk('How to post a ride?')}>Post ride</button>
-                <button onClick={() => quickAsk('Contact driver or passenger')}>Contact driver</button>
-                <button onClick={() => quickAsk('How this website works')}>How it works</button>
-                <button onClick={() => quickAsk('What is Colony Carpool')}>What is Colony Carpool</button>
-                <button onClick={() => quickAsk('Show saved searches')}>Saved searches</button>
+                {isLoading && (
+                  <div className="chat-message bot typing-indicator">
+                    <span className="dot"></span>
+                    <span className="dot"></span>
+                    <span className="dot"></span>
+                  </div>
+                )}
               </div>
 
               <div className="chat-input">

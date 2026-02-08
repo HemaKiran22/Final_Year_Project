@@ -10,7 +10,7 @@ const Signup = () => {
   const [formData, setFormData] = useState({
     name: '',
     phoneNumber: '',
-    housingSociety: '',
+    housingSociety: 'Brigade',
     flatNumber: '',
     email: '',
     password: ''
@@ -51,12 +51,12 @@ const Signup = () => {
       });
 
       setMessage('Signup successful! Your account is pending admin approval.');
-      setFormData({ name: '', phoneNumber: '', housingSociety: '', flatNumber: '', email: '', password: '' });
+      setFormData({ name: '', phoneNumber: '', housingSociety: 'Brigade', flatNumber: '', email: '', password: '' });
       
       try {
         await signOut(auth);
       } catch {}
-      navigate('/approval');
+      navigate('/login', { state: { pendingApproval: true } });
 
     } catch (error) {
       console.error("Signup error:", error);
@@ -119,10 +119,10 @@ const Signup = () => {
                 type="text" 
                 name="housingSociety" 
                 value={formData.housingSociety} 
-                onChange={handleChange} 
+                readOnly 
                 required 
               />
-              <label>Housing Society</label>
+              <label>Housing Society (fixed)</label>
               <span className="input-border"></span>
             </div>
             

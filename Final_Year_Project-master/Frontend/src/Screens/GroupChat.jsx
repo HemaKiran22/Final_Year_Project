@@ -52,8 +52,25 @@ export default function GroupChat() {
     if (!rideId) return;
     const messagesRef = collection(db, 'groupChats', rideId, 'messages');
     const q = query(messagesRef, orderBy('createdAt'));
+    const notifiedIds = new Set();
     const unsub = onSnapshot(q, (snap) => {
       setMessages(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+      // popup notification for newly added messages from others
+      snap.docChanges().forEach((chg) => {
+        if (chg.type !== 'added') return;
+        const data = chg.doc.data();
+        if (!data?.senderId || data.senderId === user?.uid) return;
+        if (notifiedIds.has(chg.doc.id)) return;
+        notifiedIds.add(chg.doc.id);
+        if ('Notification' in window) {
+          if (Notification.permission === 'default') Notification.requestPermission();
+          if (Notification.permission === 'granted') {
+            try {
+              new Notification('New group message', { body: data.text || 'You received a new message', icon: '/logo.png' });
+            } catch {}
+          }
+        }
+      });
       // scroll to bottom on new message
       setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);
     });

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { signInWithEmailAndPassword, signOut, sendPasswordResetEmail } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase';
@@ -17,6 +17,7 @@ const Login = () => {
   const [resetEmail, setResetEmail] = useState('');
   const [resetMessage, setResetMessage] = useState('');
   const navigate = useNavigate();
+  const location = useLocation();
 
   // Load saved credentials on mount
   useEffect(() => {
@@ -127,6 +128,11 @@ const Login = () => {
       </div>
       
       <div className="auth-card">
+        {location.state?.pendingApproval && (
+          <div className="message success" style={{ marginBottom: '12px' }}>
+            Account created successfully! Your account is pending admin approval.
+          </div>
+        )}
         <div className="card-header">
           
           <div className="logo">

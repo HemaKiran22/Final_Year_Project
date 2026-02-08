@@ -117,7 +117,7 @@ const LandingPage = () => {
       <nav className={`navbar ${isScrolled ? 'scrolled' : ''}`}>
         <div className="nav-container">
           <div className="logo">
-            <img src={logo} alt="Logo" className="" style={{ height: '100px', width: 'auto' }} />
+            <img src={logo} alt="Logo" className="logo-img" />
             <span className="logo-text">ColonyCarpool</span>
           </div>
           <div className={`nav-links ${isMenuOpen ? 'nav-active' : ''}`}>

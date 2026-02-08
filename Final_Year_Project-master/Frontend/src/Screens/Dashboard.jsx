@@ -1,154 +1,66 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { collection, onSnapshot, addDoc, query, where, getDocs, doc, setDoc, getDoc, updateDoc, orderBy, runTransaction } from "firebase/firestore";
+import { collection, onSnapshot, addDoc, query, where, getDocs, doc, setDoc, getDoc, updateDoc, orderBy } from "firebase/firestore";
 import { signOut } from "firebase/auth";
 import { auth, db } from "../firebase.js";
 import { FaUserCircle, FaCog, FaSignOutAlt, FaPlus, FaComments, FaTrophy, FaRobot, FaUser, FaTimes, FaCar, FaMoneyBillWave, FaSun, FaPaperPlane, FaRoute, FaLeaf, FaStar, FaBell, FaHome, FaRoad, FaCalendarAlt, FaUsers, FaQuestionCircle, FaMapMarkerAlt, FaMoon, FaBullseye, FaBolt, FaFire, FaChartLine, FaMedal, FaBars } from 'react-icons/fa';
 import logo from "../assets/logo.png";
 import './Dashboard.css';
 import { useNavigate } from 'react-router-dom';
-import { clusterRides, formatClusterResults, getClusteringStats } from '../services/clusteringService';
-import ClusteredRideGroups from '../components/ClusteredRideGroups';
-import { startTrustModel, buildPersonalizedSuggestions } from '../services/trustModelService';
-import { buildCommunityRecommendations, startCircleDiscussion } from '../services/communityAIService';
-
-// Import components (you'll need to create these)
+import { createOrGetPrivateChat, joinRideById } from '../services/rideActionService';
 
 import HelpSupport from './HelpSupport';
-
-// Import Google Maps components
-import { GoogleMap, Marker, InfoWindow, useJsApiLoader } from '@react-google-maps/api';
 
 const Dashboard = () => {
   const [myRides, setMyRides] = useState([]);
   const [allRides, setAllRides] = useState([]);
-  const [userName, setUserName] = useState("User");
+  const navigate = useNavigate();
+  const [theme, setTheme] = useState('light');
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [activeMenu, setActiveMenu] = useState('dashboard');
+  const [showTour, setShowTour] = useState(false);
+  const [tourStep, setTourStep] = useState(0);
+  const tourSteps = [
+    { title: 'Welcome', body: 'Explore your dashboard and features.', targetMenu: 'dashboard' },
+    { title: 'Rides', body: 'Find and manage your rides.', targetMenu: 'rides' }
+  ];
+  const [showShortcutsHelp, setShowShortcutsHelp] = useState(false);
   const [userId, setUserId] = useState(null);
-  const [isAIAgentOpen, setIsAIAgentOpen] = useState(false);
+  const [userName, setUserName] = useState('User');
+  const [userProfile, setUserProfile] = useState(null);
+  const [notifications, setNotifications] = useState(0);
+  const [notificationsList, setNotificationsList] = useState([]);
+  const shownNotifIdsRef = useRef(new Set());
   const [showPostRideForm, setShowPostRideForm] = useState(false);
+  const [timeHour, setTimeHour] = useState('');
+  const [timeMinute, setTimeMinute] = useState('00');
+  const [timeAmPm, setTimeAmPm] = useState('AM');
+  const [showRatingModal, setShowRatingModal] = useState(false);
+  const [ratingTargetUserId, setRatingTargetUserId] = useState(null);
+  const [ratingValue, setRatingValue] = useState(5);
+  const [submittingRating, setSubmittingRating] = useState(false);
+  const [ratingSuccess, setRatingSuccess] = useState(false);
+
+  // Dashboard insights & helper state
+  const [weeklyStats, setWeeklyStats] = useState({ rides: 0, saved: 0, co2: 0 });
+  const [monthlyStats, setMonthlyStats] = useState({ rides: 0, saved: 0, co2: 0 });
+  const [currentStreak, setCurrentStreak] = useState(0);
+  const [achievements, setAchievements] = useState([]);
+
+  // Recommendations & grouping
+  const [suggestedRides, setSuggestedRides] = useState([]);
+
+
+  // Post ride form model + filters
   const [newRide, setNewRide] = useState({
     destination: '',
     date: '',
     time: '',
     seats: 1,
-    community: '',
+    community: 'Brigade',
     price: 0,
     vehicleType: 'car',
   });
-  const [userProfile, setUserProfile] = useState(null);
-  const [activeMenu, setActiveMenu] = useState('dashboard');
-  const [notifications, setNotifications] = useState(0);
-  const [notificationsList, setNotificationsList] = useState([]);
-  const [selectedRide, setSelectedRide] = useState(null);
-  const [mapCenter, setMapCenter] = useState({ 
-    lat: 12.8420,
-    lng: 77.6611
-  });
-  const [showRatingModal, setShowRatingModal] = useState(false);
-  const [ratingTargetUserId, setRatingTargetUserId] = useState(null);
-  const [ratingValue, setRatingValue] = useState(5);
-  const [clusteredGroups, setClusteredGroups] = useState([]);
-  const [clusteringStats, setClusteringStats] = useState(null);
-  const [showClusterView, setShowClusterView] = useState(false);
-  const [joiningGroupId, setJoiningGroupId] = useState(null);
-  const [pendingChatRideId, setPendingChatRideId] = useState(null);
-  const [theme, setTheme] = useState('light');
   const [rideFilters, setRideFilters] = useState({ destination: '', date: '', status: 'all', seatsMin: 0 });
-  const [suggestedRides, setSuggestedRides] = useState([]);
-  const [weeklyStats, setWeeklyStats] = useState({ rides: 0, saved: 0, co2: 0 });
-  const [monthlyStats, setMonthlyStats] = useState({ rides: 0, saved: 0, co2: 0 });
-  const [achievements, setAchievements] = useState([]);
-  const [currentStreak, setCurrentStreak] = useState(0);
-  // Trust Model states
-  const [trustScore, setTrustScore] = useState(null);
-  const [securityLevel, setSecurityLevel] = useState('low');
-  const [securityMeasures, setSecurityMeasures] = useState([]);
-  const [safetyAlerts, setSafetyAlerts] = useState([]);
-  const [suggestedConnections, setSuggestedConnections] = useState([]);
-  const [suggestedEvents, setSuggestedEvents] = useState([]);
-  const [recommendedCircles, setRecommendedCircles] = useState([]);
-  const suggestionsUnsubRef = useRef(null);
-  const [showShortcutsHelp, setShowShortcutsHelp] = useState(false);
-  const [showTour, setShowTour] = useState(false);
-  const [tourStep, setTourStep] = useState(0);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const tourSteps = [
-    {
-      title: 'Explore your dashboard',
-      body: 'See quick stats, notifications, and shortcuts to post or join rides.',
-      targetMenu: 'dashboard',
-    },
-    {
-      title: 'Check or post rides',
-      body: 'Open My Rides to confirm rides, chat with co-riders, or post a new one.',
-      targetMenu: 'rides',
-    },
-    {
-      title: 'Join AI ride groups',
-      body: 'Ride Groups clusters nearby riders so you can join the best match fast.',
-      targetMenu: 'groups',
-    },
-    {
-      title: 'Stay social & earn badges',
-      body: 'Visit Society Feed to share updates and Leaderboard to track your impact.',
-      targetMenu: 'leaderboard',
-    },
-  ];
-  const shownNotifIdsRef = useRef(new Set());
-  // Refs to manage back-button behavior without stale state
-  const sidebarOpenRef = useRef(false);
-  const showPostRideFormRef = useRef(false);
-  const activeMenuRef = useRef('dashboard');
-  // Time picker (12-hour with AM/PM)
-  const [timeHour, setTimeHour] = useState('');
-  const [timeMinute, setTimeMinute] = useState('00');
-  const [timeAmPm, setTimeAmPm] = useState('AM');
-
-  const navigate = useNavigate();
-
-  const [isMobile, setIsMobile] = useState(false);
-
-  useEffect(() => {
-    const mq = window.matchMedia('(max-width: 768px)');
-    const onChange = () => setIsMobile(mq.matches);
-    onChange();
-    mq.addEventListener?.('change', onChange);
-    return () => mq.removeEventListener?.('change', onChange);
-  }, []);
-
-  // Keep refs synced with state for back-button handler
-  useEffect(() => { sidebarOpenRef.current = sidebarOpen; }, [sidebarOpen]);
-  useEffect(() => { showPostRideFormRef.current = showPostRideForm; }, [showPostRideForm]);
-  useEffect(() => { activeMenuRef.current = activeMenu; }, [activeMenu]);
-
-  // Mobile/device back button behavior: close overlays or return to Dashboard before leaving route
-  useEffect(() => {
-    const handlePopState = () => {
-      // Close sidebar if open
-      if (sidebarOpenRef.current) {
-        setSidebarOpen(false);
-        try { history.pushState(null, '', location.href); } catch {}
-        return;
-      }
-      // Close post-ride modal if open
-      if (showPostRideFormRef.current) {
-        setShowPostRideForm(false);
-        try { history.pushState(null, '', location.href); } catch {}
-        return;
-      }
-      // Navigate back to Dashboard tab from other tabs
-      if (activeMenuRef.current !== 'dashboard') {
-        setActiveMenu('dashboard');
-        try { history.pushState(null, '', location.href); } catch {}
-        return;
-      }
-      // Otherwise, allow normal back navigation (exit Dashboard route)
-    };
-
-    // Seed a sentinel history state so first back is handled in-app
-    try { history.pushState(null, '', location.href); } catch {}
-    window.addEventListener('popstate', handlePopState);
-    return () => window.removeEventListener('popstate', handlePopState);
-  }, []);
 
   // Initialize time picker to current time (rounded to next 5 minutes) when opening the form
   useEffect(() => {
@@ -161,24 +73,9 @@ const Dashboard = () => {
     const ap = h >= 12 ? 'PM' : 'AM';
     const h12 = h % 12 === 0 ? 12 : (h % 12);
     applyTimeParts(String(h12), String(m).padStart(2, '0'), ap);
+    // Prefill community from user profile or fixed value
+    setNewRide(prev => ({ ...prev, community: userProfile?.housingSociety || 'Brigade' }));
   }, [showPostRideForm]);
-
-  const mapContainerStyle = {
-    width: '100%',
-    height: isMobile ? '240px' : '300px',
-    borderRadius: '12px'
-  };
-
-  const options = {
-    disableDefaultUI: true,
-    zoomControl: true,
-  };
-
-  // Load Google Maps script once using Vite env var
-  const { isLoaded } = useJsApiLoader({
-    id: 'google-map-script',
-    googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '',
-  });
 
   // Start tour for first-time visitors
   useEffect(() => {
@@ -209,10 +106,12 @@ const Dashboard = () => {
             Notification.requestPermission();
           }
           if (Notification.permission === 'granted') {
-            new Notification('New chat message', {
-              body: notif.text || 'You received a new message',
-              icon: '/logo.png',
-            });
+            try {
+              new Notification('New chat message', {
+                body: notif.text || 'You received a new message',
+                icon: logo,
+              });
+            } catch {}
           }
         }
       }
@@ -233,9 +132,7 @@ const Dashboard = () => {
         case 'p':
           setShowPostRideForm(true);
           break;
-        case 'g':
-          setActiveMenu('groups');
-          break;
+
         case 'r':
           setActiveMenu('rides');
           break;
@@ -283,55 +180,6 @@ const Dashboard = () => {
           }
         });
 
-        // Start Trust Model subscriptions and personalized suggestions
-        const stopTrust = startTrustModel({
-          db,
-          userId: user.uid,
-          onUpdate: async ({ score, signals, security, alerts }) => {
-            setTrustScore(score);
-            setSecurityLevel(security.level);
-            setSecurityMeasures(security.measures);
-            setSafetyAlerts(alerts);
-
-            try {
-              const { suggestions, unsubscribe } = await buildPersonalizedSuggestions({
-                currentUserId: user.uid,
-                db,
-                signals,
-              });
-              setSuggestedConnections(suggestions.connections || []);
-              setSuggestedEvents(suggestions.events || []);
-              if (typeof suggestionsUnsubRef.current === 'function') {
-                try { suggestionsUnsubRef.current(); } catch {}
-              }
-              suggestionsUnsubRef.current = unsubscribe;
-            } catch (e) {
-              console.warn('Suggestion builder failed', e);
-            }
-
-            // Community AI: build circles and additional recommendations
-            try {
-              const recs = await buildCommunityRecommendations({ db, currentUserId: user.uid, signals });
-              // Merge connections (AI + base)
-              setSuggestedConnections(prev => {
-                const map = new Map();
-                [...(recs.connections || []), ...prev].forEach(c => map.set(c.id, c));
-                return Array.from(map.values()).slice(0, 8);
-              });
-              setRecommendedCircles(recs.circles || []);
-              // Events: prefer union while keeping short list
-              setSuggestedEvents(prev => {
-                const seen = new Set((prev || []).map(e => e.id));
-                const merged = [...prev];
-                for (const e of (recs.events || [])) if (!seen.has(e.id)) merged.push(e);
-                return merged.slice(0, 4);
-              });
-            } catch (err) {
-              console.warn('Community AI failed', err);
-            }
-          }
-        });
-
         // Listen for unread notifications for this user
         const notifsQuery = query(
           collection(db, 'notifications'),
@@ -374,7 +222,7 @@ const Dashboard = () => {
             }
           }
         );
-        return () => { try { unsubscribeProfile(); } catch {}; try { stopTrust && stopTrust(); } catch {}; try { suggestionsUnsubRef.current && suggestionsUnsubRef.current(); } catch {} };
+        return () => { try { unsubscribeProfile(); } catch {} };
       } else {
         setUserId(null);
         navigate('/login');
@@ -434,18 +282,6 @@ const Dashboard = () => {
         ...doc.data()
       }));
       setAllRides(fetchedRides);
-      
-      // Auto-cluster only active (future, non-completed) rides
-      const now = new Date();
-      const activeRides = fetchedRides.filter(r => {
-        // Exclude completed rides
-        if (r.status === 'Completed') return false;
-        // If date/time missing, treat as active (draft/upcoming)
-        if (!r.date || !r.time) return true;
-        const rideDateTime = new Date(`${r.date} ${r.time}`);
-        return rideDateTime > now;
-      });
-      performClustering(activeRides);
       
       // Check for ride reminders
       checkUpcomingRides(fetchedRides);
@@ -598,39 +434,6 @@ const Dashboard = () => {
     setSuggestedRides(suggested);
   };
 
-  // Clustering function
-  const performClustering = (rides) => {
-    if (!rides || rides.length === 0) {
-      setClusteredGroups([]);
-      setClusteringStats(null);
-      return;
-    }
-
-    // Prepare ride data for clustering
-    const ridesForClustering = rides.map(ride => ({
-      ...ride,
-      pickupLat: ride.pickupLat || 12.8420, // Default to Bangalore if not set
-      pickupLng: ride.pickupLng || 77.6611,
-      pickupLocation: ride.community,
-      userName: ride.driverName
-    }));
-
-    // Cluster rides (max 3 per group)
-    const clusters = clusterRides(ridesForClustering, {
-      maxGroupSize: 3,
-      timeWindowMinutes: 15,
-      proximityKm: 2
-    });
-
-    // Format for display
-    const formatted = formatClusterResults(clusters, { timeWindowMinutes: 15, proximityKm: 2 });
-    setClusteredGroups(formatted);
-
-    // Calculate stats
-    const stats = getClusteringStats(ridesForClustering, clusters);
-    setClusteringStats(stats);
-  };
-
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setNewRide(prev => ({ ...prev, [name]: value }));
@@ -676,7 +479,7 @@ const Dashboard = () => {
     try {
       await addDoc(collection(db, "rides"), {
         ...newRide,
-        from: 'Christ University',
+        from: userProfile?.housingSociety || 'Brigade',
         driverName: userName,
         driverId: userId,
         createdAt: new Date(),
@@ -693,7 +496,7 @@ const Dashboard = () => {
         date: '',
         time: '',
         seats: 1,
-        community: '',
+        community: userProfile?.housingSociety || 'Brigade',
         price: 0,
         vehicleType: 'car',
       });
@@ -717,22 +520,20 @@ const Dashboard = () => {
     }
   };
 
-  const handleOpenNotifications = async () => {
-    if (notificationsList.length === 0) return;
-    const latest = notificationsList[0];
+  const [showNotifList, setShowNotifList] = useState(false);
+
+  const handleOpenNotifications = () => {
+    // Toggle dropdown list; selecting an item will navigate
+    setShowNotifList(prev => !prev);
+  };
+
+  const handleSelectNotification = async (notif) => {
     try {
-      if (latest.id) {
-        await updateDoc(doc(db, 'notifications', latest.id), { read: true });
-      }
-    } catch (e) {
-      console.error('Failed to mark notification as read', e);
-    }
-    if (latest.chatId) {
-      if (latest.chatType === 'private') {
-        navigate(`/privatechat/${latest.chatId}`);
-      } else {
-        navigate(`/groupchat/${latest.chatId}`);
-      }
+      if (notif?.id) await updateDoc(doc(db, 'notifications', notif.id), { read: true });
+    } catch (e) { console.error('Failed to mark notification as read', e); }
+    if (notif?.chatId) {
+      navigate(`${notif.chatType === 'private' ? '/privatechat' : '/groupchat'}/${notif.chatId}`);
+      setShowNotifList(false);
     }
   };
 
@@ -832,108 +633,6 @@ const Dashboard = () => {
       setRatingTargetUserId(null);
     }
   };
-
-  const handleJoinGroup = async (group) => {
-    if (!userId) {
-      alert('You must be logged in to join a group.');
-      navigate('/login');
-      return;
-    }
-
-    // Prevent joining if current user is already in this group (as driver or passenger)
-    const alreadyMember = (
-      Array.isArray(group?.memberUserIds) && group.memberUserIds.includes(userId)
-    ) || (
-      Array.isArray(group?.rideOptions) && group.rideOptions.some(o => o.driverId === userId)
-    );
-    if (alreadyMember) {
-      alert('You are already part of this group.');
-      return;
-    }
-
-    // Prefer joining an existing ride with seats; if none, create a shared ride (driverless)
-    let candidateRide = group?.rideOptions?.find(r => r.seatsRemaining > 0 && r.rideId);
-
-    setJoiningGroupId(group.groupId);
-    try {
-      // If no suitable ride exists, create a shared (driverless) ride for this group
-      if (!candidateRide) {
-        const [community, destination] = (group.route || '').split(' → ').map(s => (s || '').trim());
-        const newRide = {
-          driverId: null,
-          driverName: 'Shared Ride',
-          isShared: true,
-          community: community || 'Community',
-          destination: destination || 'Destination',
-          date: group.date,
-          time: group.time,
-          vehicleType: group.vehicleType || 'car',
-          seats: group.capacity || 3,
-          price: group.estimatedCost || 0,
-          status: 'Forming',
-          passengers: [userId],
-          createdAt: new Date(),
-          createdBy: userId,
-        };
-
-        const created = await addDoc(collection(db, 'rides'), newRide);
-        alert('You have successfully joined the group.');
-        setPendingChatRideId(created.id);
-      } else {
-        await runTransaction(db, async (transaction) => {
-          const rideRef = doc(db, 'rides', candidateRide.rideId);
-          const rideSnap = await transaction.get(rideRef);
-          if (!rideSnap.exists()) {
-            throw new Error('Ride no longer exists.');
-          }
-
-          const rideData = rideSnap.data();
-          const seats = Number(rideData.seats) || 0;
-          const passengersArr = Array.isArray(rideData.passengers) ? rideData.passengers : [];
-
-          if (passengersArr.includes(userId)) {
-            throw new Error('You already joined this ride.');
-          }
-
-          if (seats > 0 && passengersArr.length >= seats) {
-            throw new Error('No seats left in this ride.');
-          }
-
-          transaction.update(rideRef, {
-            passengers: [...passengersArr, userId],
-          });
-        });
-
-        // Best-effort notify the ride creator (if any)
-        if (candidateRide.driverId) {
-          try {
-            await addDoc(collection(db, 'notifications'), {
-              toUserId: candidateRide.driverId,
-              fromUserId: userId,
-              rideId: candidateRide.rideId,
-              type: 'join',
-              createdAt: new Date(),
-              read: false,
-              message: `${userName} joined your ride group.`
-            });
-          } catch (notifyErr) {
-            console.warn('Notification write skipped (permissions?):', notifyErr);
-          }
-        }
-
-        alert('You have successfully joined the group.');
-        setPendingChatRideId(candidateRide.rideId);
-      }
-    } catch (error) {
-      console.error('Failed to join group:', error);
-      const fallback = error?.code === 'permission-denied'
-        ? 'You do not have permission to join this ride. Please ensure you are logged in.'
-        : 'Could not join this group. Please try another.';
-      alert(error.message || fallback);
-    } finally {
-      setJoiningGroupId(null);
-    }
-  };
   
   const getStatusColor = (status) => {
     switch(status) {
@@ -944,19 +643,72 @@ const Dashboard = () => {
     }
   };
 
-  const renderMyRideCard = (ride) => (
+  const getVehicleLabel = (type) => {
+    switch(type) {
+      case 'car': return '🚗 Car';
+      case 'bike': return '🏍️ Bike';
+      case 'auto': return '🛺 Auto';
+      default: return '🚗 ' + (type || 'Car');
+    }
+  };
+
+  const [joiningRideId, setJoiningRideId] = useState(null);
+
+  const handleJoinRide = async (ride) => {
+    if (!userId) {
+      alert('Please login to join a ride.');
+      navigate('/login');
+      return;
+    }
+    if (ride.driverId === userId) {
+      alert('This is your own ride.');
+      return;
+    }
+    const passengers = Array.isArray(ride.passengers) ? ride.passengers : [];
+    if (passengers.includes(userId)) {
+      alert('You have already joined this ride.');
+      return;
+    }
+    const remainingSeats = (Number(ride.seats) || 0) - passengers.length;
+    if (remainingSeats <= 0) {
+      alert('No seats available on this ride.');
+      return;
+    }
+    setJoiningRideId(ride.id);
+    try {
+      const res = await joinRideById(db, auth, ride, userName);
+      if (res.ok) {
+        alert(`Successfully joined the ride to ${ride.destination}! ${remainingSeats - 1} seat(s) remaining.`);
+      } else {
+        alert(res.message || 'Could not join this ride.');
+      }
+    } catch (e) {
+      alert(e?.message || 'Failed to join ride.');
+    } finally {
+      setJoiningRideId(null);
+    }
+  };
+
+  const renderMyRideCard = (ride) => {
+    const passengers = Array.isArray(ride.passengers) ? ride.passengers : [];
+    const totalSeats = Number(ride.seats) || 1;
+    const remainingSeats = totalSeats - passengers.length;
+    const costPerPerson = totalSeats > 0 ? (Number(ride.price) || 0) / totalSeats : 0;
+    const seatsFilled = passengers.length;
+
+    return (
     <div key={ride.id} className="ride-card">
       <div className="ride-header">
         <div className="ride-driver">
           <div className="driver-avatar">{userName.charAt(0)}</div>
           <div className="driver-name">You</div>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <span className="status-chip" style={{ background: getStatusColor(ride.status || 'Pending'), color: 'white', padding: '4px 12px', borderRadius: '12px', fontSize: '12px', fontWeight: '600' }}>
-            {ride.status || 'Pending'}
-          </span>
-          <div className="ride-date">{ride.date} at {ride.time}</div>
-        </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <span className="status-chip" style={{ background: getStatusColor(ride.status || 'Pending'), color: 'white', padding: '4px 12px', borderRadius: '12px', fontSize: '12px', fontWeight: '600' }}>
+                {ride.status || 'Pending'}
+              </span>
+              <div className="ride-date">{ride.date} at {ride.time}</div>
+            </div>
       </div>
       
       <div className="ride-details">
@@ -964,23 +716,38 @@ const Dashboard = () => {
           <div className="route-dot"></div>
           <div className="route-line"></div>
           <div className="route-dot end"></div>
-          <div className="route-info">
-            <div className="route-from">Christ University</div>
-            <div className="route-to">{ride.destination}</div>
-          </div>
+              <div className="route-info" aria-label={`Route from Christ University to ${ride.destination}`}>
+                <div className="route-from"><span className="route-label from">From</span> Christ University</div>
+                <div className="route-to"><span className="route-label to">To</span> {ride.destination}</div>
+              </div>
         </div>
         
         <div className="ride-meta">
           <div className="meta-item">
-            <i className="fas fa-rupee-sign"></i> {ride.price}
+            <FaCar /> {getVehicleLabel(ride.vehicleType)}
           </div>
           <div className="meta-item">
-            <i className="fas fa-user-friends"></i> {ride.seats} seats
+            <i className="fas fa-rupee-sign"></i> ₹{Number(ride.price) || 0}
           </div>
           <div className="meta-item">
-            <i className="fas fa-car"></i> Your Vehicle
+            <i className="fas fa-user-friends"></i> ₹{costPerPerson.toFixed(0)}/person
           </div>
         </div>
+
+        {/* Seat occupancy indicator - hide for completed rides */}
+        {!ride.isCompleted && ride.status !== 'Completed' && (
+        <div className="seat-indicator">
+          <div className="seat-indicator-bar">
+            <div className="seat-indicator-fill" style={{ width: `${totalSeats > 0 ? (seatsFilled / totalSeats) * 100 : 0}%` }}></div>
+          </div>
+          <div className="seat-indicator-text">
+            <span>{seatsFilled}/{totalSeats} seats filled</span>
+            <span className={`seats-remaining ${remainingSeats === 0 ? 'full' : remainingSeats <= 1 ? 'low' : ''}`}>
+              {remainingSeats === 0 ? 'Full' : `${remainingSeats} seat${remainingSeats > 1 ? 's' : ''} available`}
+            </span>
+          </div>
+        </div>
+        )}
       </div>
       
       <div className="ride-actions">
@@ -998,6 +765,15 @@ const Dashboard = () => {
             </button>
           </>
         )}
+        {ride.driverId && userId && ride.driverId !== userId && (
+          <button 
+            className="btn btn-secondary"
+            onClick={() => handleOpenPrivateChat(ride)}
+            style={{ marginLeft: '10px' }}
+          >
+            Private Chat
+          </button>
+        )}
         <button 
           className="btn btn-secondary"
           onClick={() => navigate(`/groupchat/${ride.id}`)}
@@ -1007,7 +783,21 @@ const Dashboard = () => {
         </button>
       </div>
     </div>
-  );
+    );
+  };
+  const handleOpenPrivateChat = async (ride) => {
+    try {
+      const res = await createOrGetPrivateChat(db, auth, ride);
+      if (res.ok && res.chatId) {
+        navigate(`/privatechat/${res.chatId}`);
+      } else {
+        alert(res.message || 'Unable to open private chat.');
+      }
+    } catch (e) {
+      console.error('Failed to open private chat', e);
+      alert('Failed to open private chat.');
+    }
+  };
 
   const getDestinationCoords = (destination) => {
     const commonDestinations = {
@@ -1040,7 +830,7 @@ const Dashboard = () => {
       const targetMenu = tourSteps[nextStep]?.targetMenu;
       if (targetMenu === 'leaderboard') navigate('/leaderboard');
       if (targetMenu === 'feed') navigate('/societyfeed');
-      if (targetMenu === 'rides' || targetMenu === 'groups' || targetMenu === 'dashboard') setActiveMenu(targetMenu);
+      if (targetMenu === 'rides' || targetMenu === 'dashboard') setActiveMenu(targetMenu);
     } else {
       localStorage.setItem('dashboardTourSeen', '1');
       setShowTour(false);
@@ -1057,38 +847,6 @@ const Dashboard = () => {
         return <Members userId={userId} />;
       case 'help':
         return <HelpSupport />;
-      case 'groups':
-        return (
-          <div className="dashboard-section animate-in delay-2">
-            <div className="section-header">
-              <h2 className="section-title">Optimized Ride Groups</h2>
-              <p className="section-subtitle">AI-powered carpooling groups to save money and reduce traffic</p>
-            </div>
-            {pendingChatRideId && (
-              <div style={{
-                background: '#eef2ff',
-                border: '1px solid #c7d2fe',
-                padding: '12px 16px',
-                borderRadius: '10px',
-                marginBottom: '12px',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center'
-              }}>
-                <span>You joined the group. Open the group private chat to coordinate.</span>
-                <button className="btn btn-primary" onClick={() => navigate(`/groupchat/${pendingChatRideId}`)}>Group Private Chat</button>
-              </div>
-            )}
-            <ClusteredRideGroups 
-              clusters={clusteredGroups} 
-              stats={clusteringStats}
-              onJoinGroup={handleJoinGroup}
-              joiningGroupId={joiningGroupId}
-              chatRideId={pendingChatRideId}
-              currentUserId={userId}
-            />
-          </div>
-        );
       case 'rides':
         const filteredMyRides = myRides.filter(r => {
           if (rideFilters.destination && !r.destination.toLowerCase().includes(rideFilters.destination.toLowerCase())) return false;
@@ -1163,150 +921,116 @@ const Dashboard = () => {
       default:
         return (
           <>
-            <div className="dashboard-section animate-in">
+            {/* Welcome Banner */}
+            <div className="welcome-banner animate-in">
+              <div className="welcome-text">
+                <h1>Welcome back, {userName}! 👋</h1>
+                <p>Ready to share your next ride?</p>
+              </div>
+            </div>
+
+            {/* Quick Actions moved to top */}
+            <div className="dashboard-section animate-in delay-1">
               <div className="section-header">
-                <h2 className="section-title">
-                  <FaMapMarkerAlt style={{marginRight: '10px'}} />
-                  Search For Precise Location
-                </h2>
-                <div className="map-legend">
-                  <div className="legend-item">
-                    <div className="legend-color driver"></div>
-                    <span>Your Rides</span>
+                <h2 className="section-title">Quick Actions</h2>
+                <button 
+                  className="shortcuts-btn"
+                  onClick={() => setShowShortcutsHelp(true)}
+                >
+                  ⌨️ Keyboard Shortcuts
+                </button>
+              </div>
+              <div className="rides-grid">
+                <div className="feature-card" onClick={() => setShowPostRideForm(true)}>
+                  <div className="card-icon">
+                    <FaPlus />
                   </div>
-                  <div className="legend-item">
-                    <div className="legend-color available"></div>
-                    <span>Available Rides</span>
+                  <h3>Post a Ride</h3>
+                  <p>Share your ride details with the community</p>
+                  <span className="shortcut-hint" style={{ fontSize: '12px', color: 'var(--gray)', marginTop: '8px' }}>Press P</span>
+                </div>
+                <div className="feature-card" onClick={() => window.dispatchEvent(new CustomEvent('open-chatbot'))}>
+                  <div className="card-icon">
+                    <FaRobot />
                   </div>
-                  <div className="legend-item">
-                    <div className="legend-color" style={{ background: '#fbbf24' }}></div>
-                    <span>Groups (seats left)</span>
+                  <h3>Find a Ride</h3>
+                  <p>Use our AI agent to find the perfect ride</p>
+                </div>
+                <div className="feature-card" onClick={() => navigate('/societyfeed')}>
+                  <div className="card-icon">
+                    <FaUsers />
                   </div>
-                  <div className="legend-item">
-                    <div className="legend-color" style={{ background: '#d9534f' }}></div>
-                    <span>Full Groups</span>
+                  <h3>Society Feed</h3>
+                  <p>See what's happening in your community</p>
+                </div>
+                <div className="feature-card" onClick={() => setActiveMenu('rides')}>
+                  <div className="card-icon">
+                    <FaRoad />
                   </div>
+                  <h3>My Rides</h3>
+                  <p>View and manage all your rides</p>
+                  <span className="shortcut-hint" style={{ fontSize: '12px', color: 'var(--gray)', marginTop: '8px' }}>Press R</span>
+                </div>
+                {myRides.length > 0 && myRides[0] && (
+                  <div className="feature-card" onClick={() => {
+                    const lastRide = myRides[0];
+                    setNewRide({
+                      destination: lastRide.destination,
+                      date: '',
+                      time: lastRide.time || '',
+                      seats: lastRide.seats || 1,
+                      community: lastRide.community || '',
+                      price: lastRide.price || 0,
+                      vehicleType: lastRide.vehicleType || 'car',
+                    });
+                    setShowPostRideForm(true);
+                  }}>
+                    <div className="card-icon">
+                      <FaCar />
+                    </div>
+                    <h3>Repost Last Ride</h3>
+                    <p>Quick post with previous details</p>
+                    <span style={{ fontSize: '12px', color: 'var(--accent)', marginTop: '8px' }}>To: {myRides[0].destination}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+            {/* My Analytics */}
+            <div className="dashboard-section animate-in delay-1">
+              <div className="section-header">
+                <h2 className="section-title"><FaChartLine style={{ marginRight: '10px' }} /> My Analytics</h2>
+              </div>
+              <div className="analytics-grid">
+                <div className="analytics-card analytics-co2">
+                  <div className="analytics-icon"><FaLeaf /></div>
+                  <div className="analytics-value">{((userProfile?.ridesShared || 0) * 4.6).toFixed(1)} kg</div>
+                  <div className="analytics-label">CO₂ Saved</div>
+                </div>
+                <div className="analytics-card analytics-rides">
+                  <div className="analytics-icon"><FaCar /></div>
+                  <div className="analytics-value">{userProfile?.ridesShared || 0}</div>
+                  <div className="analytics-label">Rides Completed</div>
+                </div>
+                <div className="analytics-card analytics-money">
+                  <div className="analytics-icon"><FaMoneyBillWave /></div>
+                  <div className="analytics-value">₹{(userProfile?.moneySaved || 0).toFixed(0)}</div>
+                  <div className="analytics-label">Money Saved</div>
+                </div>
+                <div className="analytics-card analytics-rating">
+                  <div className="analytics-icon"><FaStar /></div>
+                  <div className="analytics-value">{(userProfile?.averageRating || 0).toFixed(1)} <span className="analytics-rating-count">({userProfile?.totalRatings || 0})</span></div>
+                  <div className="analytics-label">My Rating</div>
                 </div>
               </div>
-              
-              {isLoaded && (
-                <GoogleMap
-                  mapContainerStyle={mapContainerStyle}
-                  zoom={12}
-                  center={mapCenter}
-                  options={options}
-                >
-                  {/* Show clustered groups on map */}
-                  {clusteredGroups.map((group, idx) => {
-                    const coords = getDestinationCoords(group.route.split(' → ')[1] || 'MG Road');
-                    const isFull = group.isFull;
-                    
-                    return (
-                      <Marker
-                        key={`group-${group.groupId}`}
-                        position={coords}
-                        icon={{
-                          url: isFull 
-                            ? 'http://maps.google.com/mapfiles/ms/icons/red-dot.png'
-                            : 'http://maps.google.com/mapfiles/ms/icons/yellow-dot.png',
-                          scaledSize: new window.google.maps.Size(35, 35)
-                        }}
-                        label={{
-                          text: `${group.members}/${group.capacity}`,
-                          color: 'white',
-                          fontSize: '12px',
-                          fontWeight: 'bold'
-                        }}
-                        onClick={() => {
-                          setSelectedRide({ 
-                            ...group, 
-                            isGroup: true,
-                            destination: group.route.split(' → ')[1]
-                          });
-                          setMapCenter(coords);
-                        }}
-                      />
-                    );
-                  })}
-                  
-                  {/* Show individual rides */}
-                  {allRides.map(ride => {
-                    const isMyRide = ride.driverId === userId;
-                    const coords = getDestinationCoords(ride.destination);
-                    
-                    return (
-                      <Marker
-                        key={ride.id}
-                        position={coords}
-                        icon={{
-                          url: isMyRide 
-                            ? 'http://maps.google.com/mapfiles/ms/icons/blue-dot.png'
-                            : 'http://maps.google.com/mapfiles/ms/icons/green-dot.png',
-                          scaledSize: new window.google.maps.Size(30, 30)
-                        }}
-                        onClick={() => {
-                          setSelectedRide(ride);
-                          setMapCenter(coords);
-                        }}
-                      />
-                    );
-                  })}
-                  
-                  {selectedRide && (
-                    <InfoWindow
-                      position={getDestinationCoords(selectedRide.destination)}
-                      onCloseClick={() => setSelectedRide(null)}
-                    >
-                      <div className="map-info-window">
-                        {selectedRide.isGroup ? (
-                          <>
-                            <h3><FaCar style={{ marginRight: '8px' }} /> Group: {selectedRide.route}</h3>
-                            <p>Members: {selectedRide.members}/{selectedRide.capacity}</p>
-                            <p>Time: {selectedRide.time}</p>
-                            <p>Cost per person: ₹{Math.round(selectedRide.costPerPerson)}</p>
-                            <p style={{ color: selectedRide.isFull ? '#d9534f' : '#5cb85c', fontWeight: 'bold' }}>
-                              {selectedRide.isFull ? 'Full' : `${selectedRide.remainingSeats} seats left`}
-                            </p>
-                            <button 
-                              className="btn btn-primary"
-                              onClick={() => {
-                                setActiveMenu('groups');
-                                setSelectedRide(null);
-                              }}
-                            >
-                              View Groups
-                            </button>
-                          </>
-                        ) : (
-                          <>
-                            <h3>{selectedRide.destination}</h3>
-                            <p>Driver: {selectedRide.driverName}</p>
-                            <p>Date: {selectedRide.date} at {selectedRide.time}</p>
-                            <p>Seats: {selectedRide.seats}</p>
-                            <p>Price: ₹{selectedRide.price}</p>
-                            <button 
-                              className="btn btn-primary"
-                              onClick={() => {
-                                alert(`You selected ride to ${selectedRide.destination}`);
-                              }}
-                            >
-                              View Details
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    </InfoWindow>
-                  )}
-                </GoogleMap>
-              )}
             </div>
-            
+
             {/* Weekly/Monthly Insights */}
             <div className="dashboard-section animate-in delay-1">
               <div className="section-header">
                 <h2 className="section-title"><FaChartLine style={{ marginRight: '10px' }} /> Your Impact This Week</h2>
               </div>
-              
+            
+            
               <div className="insights-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px', marginBottom: '20px' }}>
                 <div className="insight-card" style={{ background: '#f8fafc', color: '#1f2937', padding: '20px', borderRadius: '12px', boxShadow: 'var(--shadow-light)', border: '1px solid #e5e7eb' }}>
                   <div style={{ fontSize: '14px', opacity: '0.9' }}>Rides This Week</div>
@@ -1364,130 +1088,6 @@ const Dashboard = () => {
                 </div>
               )}
             </div>
-            
-            {/* Trust & Safety */}
-            <div className="dashboard-section animate-in delay-1">
-              <div className="section-header">
-                <h2 className="section-title">Trust &amp; Safety</h2>
-                <p className="section-subtitle">Real-time trust score and safety recommendations</p>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '15px' }}>
-                <div style={{ background: 'var(--card-bg)', padding: '18px', borderRadius: '12px', boxShadow: 'var(--shadow-light)', border: '1px solid var(--light-gray)' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <div style={{ fontWeight: 600, color: 'var(--dark)' }}>Trust Score</div>
-                    <div style={{ fontSize: '12px', color: 'var(--gray)' }}>Adaptive</div>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '12px' }}>
-                    <div style={{
-                      width: '60px', height: '60px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      background: '#f8fafc', border: `3px solid ${trustScore == null ? '#cbd5e1' : (trustScore < 40 ? '#d9534f' : (trustScore < 70 ? '#f0ad4e' : '#5cb85c'))}`
-                    }}>
-                      <span style={{ fontWeight: 700, color: 'var(--dark)' }}>{trustScore != null ? trustScore : '—'}</span>
-                    </div>
-                    <div>
-                      <div style={{ fontSize: '12px', color: 'var(--gray)' }}>Security Level</div>
-                      <div style={{ fontWeight: 600, textTransform: 'capitalize' }}>{securityLevel}</div>
-                    </div>
-                  </div>
-                  {securityMeasures && securityMeasures.length > 0 && (
-                    <ul style={{ marginTop: '12px', paddingLeft: '18px', color: 'var(--dark)', fontSize: '14px' }}>
-                      {securityMeasures.slice(0, 4).map((m, i) => (<li key={i}>{m}</li>))}
-                    </ul>
-                  )}
-                </div>
-
-                <div style={{ background: 'var(--card-bg)', padding: '18px', borderRadius: '12px', boxShadow: 'var(--shadow-light)', border: '1px solid var(--light-gray)' }}>
-                  <div style={{ fontWeight: 600, color: 'var(--dark)', marginBottom: '8px' }}>Safety Alerts</div>
-                  {(safetyAlerts && safetyAlerts.length > 0) ? (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                      {safetyAlerts.slice(0, 4).map((a, idx) => (
-                        <div key={idx} style={{
-                          padding: '10px', borderRadius: '8px',
-                          background: a.type === 'critical' ? '#fee2e2' : (a.type === 'warning' ? '#fef3c7' : '#eef2ff'),
-                          border: '1px solid var(--light-gray)'
-                        }}>
-                          <span style={{ fontSize: '13px', color: 'var(--dark)' }}>{a.text}</span>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div style={{ fontSize: '13px', color: 'var(--gray)' }}>No safety alerts.</div>
-                  )}
-                </div>
-
-                <div style={{ background: 'var(--card-bg)', padding: '18px', borderRadius: '12px', boxShadow: 'var(--shadow-light)', border: '1px solid var(--light-gray)' }}>
-                  <div style={{ fontWeight: 600, color: 'var(--dark)', marginBottom: '8px' }}>Suggested Connections</div>
-                  {(suggestedConnections && suggestedConnections.length > 0) ? (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                      {suggestedConnections.map((c) => (
-                        <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                          <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: '#e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700 }}>{(c.name || 'U').charAt(0)}</div>
-                          <div style={{ flex: 1 }}>
-                            <div style={{ fontWeight: 600 }}>{c.name}</div>
-                            <div style={{ fontSize: '12px', color: 'var(--gray)' }}>Shared interests: {c.overlap}</div>
-                          </div>
-                          <button className="btn btn-primary" onClick={() => navigate(`/privatechat/${c.id}`)}>Say Hi</button>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div style={{ fontSize: '13px', color: 'var(--gray)' }}>No connection suggestions yet.</div>
-                  )}
-                </div>
-
-                <div style={{ background: 'var(--card-bg)', padding: '18px', borderRadius: '12px', boxShadow: 'var(--shadow-light)', border: '1px solid var(--light-gray)' }}>
-                  <div style={{ fontWeight: 600, color: 'var(--dark)', marginBottom: '8px' }}>Community Events</div>
-                  {(suggestedEvents && suggestedEvents.length > 0) ? (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                      {suggestedEvents.map((evt) => (
-                        <div key={evt.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                          <div>
-                            <div style={{ fontWeight: 600 }}>{evt.title}</div>
-                            <div style={{ fontSize: '12px', color: 'var(--gray)' }}>{evt.desc}</div>
-                          </div>
-                          <button className="btn btn-primary" onClick={() => alert('Event RSVP coming soon')}>RSVP</button>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div style={{ fontSize: '13px', color: 'var(--gray)' }}>No upcoming suggestions.</div>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Community AI Recommendations */}
-            <div className="dashboard-section animate-in delay-1">
-              <div className="section-header">
-                <h2 className="section-title">Community AI</h2>
-                <p className="section-subtitle">Personalized circles and discussion starters to build trust</p>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '15px' }}>
-                <div style={{ background: 'var(--card-bg)', padding: '18px', borderRadius: '12px', boxShadow: 'var(--shadow-light)', border: '1px solid var(--light-gray)' }}>
-                  <div style={{ fontWeight: 600, color: 'var(--dark)', marginBottom: '8px' }}>Recommended Circles</div>
-                  {(recommendedCircles && recommendedCircles.length > 0) ? (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                      {recommendedCircles.map((c) => (
-                        <div key={c.id} style={{ border: '1px solid var(--light-gray)', borderRadius: '8px', padding: '12px' }}>
-                          <div style={{ fontWeight: 600, color: 'var(--dark)' }}>{c.title}</div>
-                          <div style={{ fontSize: '12px', color: 'var(--gray)', marginTop: '4px' }}>{c.reason}</div>
-                          <div style={{ marginTop: '8px', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                            {c.members.map(m => (
-                              <span key={m.id} style={{ fontSize: '12px', background: '#eef2ff', border: '1px solid #c7d2fe', padding: '4px 8px', borderRadius: '999px' }}>{m.name}</span>
-                            ))}
-                          </div>
-                          <div style={{ marginTop: '10px', display: 'flex', gap: '8px' }}>
-                            <button className="btn btn-primary" onClick={async () => { try { await startCircleDiscussion(db, userId, c); alert('Introductions sent!'); } catch (e) { alert('Failed to start discussion'); } } }>Start Discussion</button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div style={{ fontSize: '13px', color: 'var(--gray)' }}>No circle suggestions yet.</div>
-                  )}
-                </div>
-              </div>
-            </div>
 
             {/* Suggested Rides Section */}
             {suggestedRides.length > 0 && (
@@ -1498,8 +1098,17 @@ const Dashboard = () => {
                 </div>
                 
                 <div className="rides-grid">
-                  {suggestedRides.map(ride => (
-                    <div key={ride.id} className="ride-card suggested-ride">
+                  {suggestedRides.map(ride => {
+                    const passengers = Array.isArray(ride.passengers) ? ride.passengers : [];
+                    const totalSeats = Number(ride.seats) || 1;
+                    const remainingSeats = totalSeats - passengers.length;
+                    const costPerPerson = totalSeats > 0 ? (Number(ride.price) || 0) / totalSeats : 0;
+                    const isFull = remainingSeats <= 0;
+                    const alreadyJoined = passengers.includes(userId);
+                    const isJoining = joiningRideId === ride.id;
+
+                    return (
+                    <div key={ride.id} className={`ride-card suggested-ride ${isFull ? 'ride-full' : ''}`}>
                       <div className="ride-header">
                         <div className="ride-driver">
                           <div className="driver-avatar">{ride.driverName?.charAt(0) || 'U'}</div>
@@ -1507,184 +1116,66 @@ const Dashboard = () => {
                         </div>
                         <div className="ride-date">{ride.date} at {ride.time}</div>
                       </div>
-                      
                       <div className="ride-details">
                         <div className="ride-route">
                           <div className="route-dot"></div>
                           <div className="route-line"></div>
                           <div className="route-dot end"></div>
-                          <div className="route-info">
-                            <div className="route-from">{ride.from || 'Christ University'}</div>
-                            <div className="route-to">{ride.destination}</div>
+                          <div className="route-info" aria-label={`Route from ${ride.from || 'Christ University'} to ${ride.destination}`}>
+                            <div className="route-from"><span className="route-label from">From</span> {ride.from || 'Christ University'}</div>
+                            <div className="route-to"><span className="route-label to">To</span> {ride.destination}</div>
                           </div>
                         </div>
-                        
                         <div className="ride-meta">
                           <div className="meta-item">
-                            <i className="fas fa-rupee-sign"></i> {ride.price}
+                            <FaCar /> {getVehicleLabel(ride.vehicleType)}
                           </div>
                           <div className="meta-item">
-                            <i className="fas fa-user-friends"></i> {(ride.seats || 0) - (Array.isArray(ride.passengers) ? ride.passengers.length : 0)} seats left
+                            <i className="fas fa-rupee-sign"></i> ₹{Number(ride.price) || 0}
                           </div>
                           <div className="meta-item">
-                            <i className="fas fa-home"></i> {ride.community}
+                            <i className="fas fa-user-friends"></i> ₹{costPerPerson.toFixed(0)}/person
+                          </div>
+                        </div>
+
+                        {/* Seat occupancy indicator */}
+                        <div className="seat-indicator">
+                          <div className="seat-indicator-bar">
+                            <div className="seat-indicator-fill" style={{ width: `${totalSeats > 0 ? (passengers.length / totalSeats) * 100 : 0}%` }}></div>
+                          </div>
+                          <div className="seat-indicator-text">
+                            <span>{passengers.length}/{totalSeats} seats filled</span>
+                            <span className={`seats-remaining ${isFull ? 'full' : remainingSeats <= 1 ? 'low' : ''}`}>
+                              {isFull ? 'Full' : `${remainingSeats} seat${remainingSeats > 1 ? 's' : ''} left`}
+                            </span>
                           </div>
                         </div>
                       </div>
-                      
                       <div className="ride-actions">
                         <button 
-                          className="btn btn-primary"
-                          onClick={() => {
-                            // Find matching group or show ride details
-                            const matchingGroup = clusteredGroups.find(g => 
-                              g.rideOptions?.some(opt => opt.rideId === ride.id)
-                            );
-                            if (matchingGroup) {
-                              setActiveMenu('groups');
-                            } else {
-                              alert(`Contact ${ride.driverName} to join this ride!`);
-                            }
-                          }}
+                          className={`btn ${alreadyJoined ? 'btn-secondary' : 'btn-primary'} ${isFull && !alreadyJoined ? 'btn-disabled' : ''}`}
+                          onClick={() => !isFull && !alreadyJoined && !isJoining && handleJoinRide(ride)}
+                          disabled={isFull || alreadyJoined || isJoining}
+                          title={isFull ? 'No seats available' : alreadyJoined ? 'Already joined' : 'Join this ride'}
                         >
-                          View Details
+                          {isJoining ? 'Joining...' : alreadyJoined ? '✓ Joined' : isFull ? 'Ride Full' : 'Join Ride'}
                         </button>
+                        {!isFull && !alreadyJoined && (
+                          <button 
+                            className="btn btn-secondary"
+                            onClick={() => createOrGetPrivateChat(db, auth, ride).then(chatId => chatId && navigate(`/privatechat/${chatId}`))}
+                            style={{ marginLeft: '10px' }}
+                          >
+                            Message Driver
+                          </button>
+                        )}
                       </div>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             )}
-            
-            <div className="stats-container">
-              <div className="stat-card animate-in">
-                <div className="stat-icon rides-icon">
-                  <FaRoute />
-                </div>
-                <div className="stat-info">
-                  <h3>{userProfile?.ridesShared || '0'}</h3>
-                  <p>Rides Shared</p>
-                </div>
-              </div>
-              
-              <div className="stat-card animate-in delay-1">
-                <div className="stat-icon money-icon">
-                  <FaMoneyBillWave />
-                </div>
-                <div className="stat-info">
-                  <h3>₹{(userProfile?.moneySaved || 0).toFixed(2)}</h3>
-                  <p>Money Saved</p>
-                </div>
-              </div>
-              
-              <div className="stat-card animate-in delay-2">
-                <div className="stat-icon carbon-icon">
-                  <FaLeaf />
-                </div>
-                <div className="stat-info">
-                  <h3>{(((userProfile?.ridesShared || 0) * 4.6).toFixed(2))} kg</h3>
-                  <p>CO₂ Reduced</p>
-                </div>
-              </div>
-              
-              <div className="stat-card animate-in delay-3">
-                <div className="stat-icon rating-icon">
-                  <FaStar />
-                </div>
-                <div className="stat-info">
-                  <h3>{(userProfile?.averageRating ? Number(userProfile.averageRating) : 0).toFixed(1)}</h3>
-                  <p>Average Rating</p>
-                </div>
-              </div>
-            </div>
-            
-            <div className="dashboard-section animate-in delay-1">
-              <div className="section-header">
-                <h2 className="section-title">Quick Actions</h2>
-                <button 
-                  onClick={() => setShowShortcutsHelp(true)}
-                  style={{ 
-                    padding: '6px 12px', 
-                    borderRadius: '6px', 
-                    border: '1px solid var(--light-gray)', 
-                    background: 'var(--card-bg)', 
-                    cursor: 'pointer',
-                    fontSize: '12px',
-                    color: 'var(--gray)'
-                  }}
-                >
-                  ⌨️ Keyboard Shortcuts
-                </button>
-              </div>
-              
-              <div className="rides-grid">
-                <div className="feature-card" onClick={() => setShowPostRideForm(true)}>
-                  <div className="card-icon">
-                    <FaPlus />
-                  </div>
-                  <h3>Post a Ride</h3>
-                  <p>Share your ride details with the community</p>
-                  <span style={{ fontSize: '12px', color: 'var(--gray)', marginTop: '8px' }}>Press P</span>
-                </div>
-                
-                <div className="feature-card" onClick={() => setActiveMenu('groups')}>
-                  <div className="card-icon">
-                    <FaUsers />
-                  </div>
-                  <h3>Find My Group</h3>
-                  <p>Join optimized ride groups and save money</p>
-                  <span style={{ fontSize: '12px', color: 'var(--gray)', marginTop: '8px' }}>Press G</span>
-                </div>
-                
-                <div className="feature-card" onClick={() => navigate('/aibot')}>
-                  <div className="card-icon">
-                    <FaRobot />
-                  </div>
-                  <h3>Find a Ride</h3>
-                  <p>Use our AI agent to find the perfect ride</p>
-                </div>
-                
-                <div className="feature-card" onClick={() => navigate('/societyfeed')}>
-                  <div className="card-icon">
-                    <FaUsers />
-                  </div>
-                  <h3>Society Feed</h3>
-                  <p>See what's happening in your community</p>
-                </div>
-                
-                <div className="feature-card" onClick={() => setActiveMenu('rides')}>
-                  <div className="card-icon">
-                    <FaRoad />
-                  </div>
-                  <h3>My Rides</h3>
-                  <p>View and manage all your rides</p>
-                  <span style={{ fontSize: '12px', color: 'var(--gray)', marginTop: '8px' }}>Press R</span>
-                </div>
-                
-                {myRides.length > 0 && myRides[0] && (
-                  <div className="feature-card" onClick={() => {
-                    const lastRide = myRides[0];
-                    setNewRide({
-                      destination: lastRide.destination,
-                      date: '',
-                      time: lastRide.time || '',
-                      seats: lastRide.seats || 1,
-                      community: lastRide.community || '',
-                      price: lastRide.price || 0,
-                      vehicleType: lastRide.vehicleType || 'car',
-                    });
-                    setShowPostRideForm(true);
-                  }}>
-                    <div className="card-icon">
-                      <FaCar />
-                    </div>
-                    <h3>Repost Last Ride</h3>
-                    <p>Quick post with previous details</p>
-                    <span style={{ fontSize: '12px', color: 'var(--accent)', marginTop: '8px' }}>To: {myRides[0].destination}</span>
-                  </div>
-                )}
-              </div>
-            </div>
             
             <div className="dashboard-section animate-in delay-2">
               <div className="section-header">
@@ -1726,10 +1217,6 @@ const Dashboard = () => {
           <div className={`menu-item ${activeMenu === 'rides' ? 'active' : ''}`} onClick={() => setActiveMenu('rides')}>
             <FaRoad className="menu-icon" />
             <span className="menu-text">My Rides</span>
-          </div>
-          <div className={`menu-item ${activeMenu === 'groups' ? 'active' : ''}`} onClick={() => setActiveMenu('groups')}>
-            <FaUsers className="menu-icon" />
-            <span className="menu-text">Ride Groups</span>
           </div>
           
           
@@ -1824,6 +1311,22 @@ const Dashboard = () => {
               <FaBell />
               <span className="notification-badge">{notifications}</span>
             </div>
+            {showNotifList && (
+              <div className="notif-dropdown">
+                <div className="notif-header">Notifications</div>
+                {notificationsList.length === 0 ? (
+                  <div className="notif-empty">No unread notifications</div>
+                ) : (
+                  notificationsList.slice(0, 8).map(n => (
+                    <div key={n.id} className="notif-item" onClick={() => handleSelectNotification(n)}>
+                      <div className={`notif-type ${n.chatType === 'private' ? 'private' : 'group'}`}>{n.chatType === 'private' ? 'Private' : 'Group'}</div>
+                      <div className="notif-text">{n.text || n.message || 'New activity'}</div>
+                      <div className="notif-time">{(n.createdAt?.toDate?.() || new Date(n.createdAt || Date.now())).toLocaleString()}</div>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
             <div className="user-profile">
               <div className="user-avatar">{userName.charAt(0)}</div>
               <div className="user-name">{userName}</div>
@@ -1905,10 +1408,6 @@ const Dashboard = () => {
               <div className="form-group">
                 <label>Price:</label>
                 <input type="number" name="price" value={newRide.price} onChange={handleInputChange} required />
-              </div>
-              <div className="form-group">
-                <label>Community/Society:</label>
-                <input type="text" name="community" value={newRide.community} onChange={handleInputChange} required />
               </div>
               <button type="submit" className="post-ride-submit-btn">Post Ride</button>
             </form>
