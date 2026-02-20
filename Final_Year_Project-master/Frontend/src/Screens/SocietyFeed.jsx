@@ -5,6 +5,7 @@ import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { db, storage } from '../firebase';
 import { FaUserCircle, FaImage, FaFileAlt, FaThumbsUp, FaComment, FaPaperPlane, FaHeart, FaShare, FaTimes, FaGlobeAmericas } from 'react-icons/fa';
 import './SocietyFeed.css';
+import notify from '../utils/notify';
 
 const SocietyFeed = () => {
   const [feedItems, setFeedItems] = useState([]);
@@ -64,7 +65,7 @@ const SocietyFeed = () => {
           fileType = selectedFile.type;
         } catch (fileError) {
           console.error("File upload error:", fileError);
-          alert("Failed to upload file. Posting without media.");
+          notify.warn('Failed to upload file. Posting without media.');
         }
       }
 
@@ -86,7 +87,7 @@ const SocietyFeed = () => {
     } catch (error) {
       console.error("Error adding post: ", error);
       console.error("Error details:", error.message, error.code);
-      alert(`Failed to post: ${error.message || 'Please try again.'}`);
+      notify.error(`Failed to post: ${error.message || 'Please try again.'}`);
       setIsPosting(false);
     }
   };
@@ -123,7 +124,7 @@ const SocietyFeed = () => {
       });
     } catch (error) {
       console.error("Error adding comment: ", error);
-      alert(`Failed to add comment: ${error.message || 'Please try again.'}`);
+      notify.error(`Failed to add comment: ${error.message || 'Please try again.'}`);
     }
   };
 

@@ -14,7 +14,10 @@ import {
   increment,
 } from "firebase/firestore";
 import { useParams, useNavigate } from "react-router-dom";
+import ReliabilityBadge from '../components/ReliabilityBadge';
+import { refreshReliabilityScore } from '../services/reliabilityService';
 import "./PrivateChat.css";
+import notify from '../utils/notify';
 
 const PrivateChat = () => {
   const { chatId } = useParams(); // Get chatId from URL
@@ -75,32 +78,40 @@ const PrivateChat = () => {
     return () => unsubscribe();
   }, [chatId]);
 
-  // Fetch chat metadata and ride details
+  // Fetch chat metadata and ride details (Real-time)
   useEffect(() => {
-    const fetchMeta = async () => {
-      if (!chatId) return;
-      const chatRef = doc(db, "chats", chatId);
-      const chatSnap = await getDoc(chatRef);
+    if (!chatId) return;
+    const chatRef = doc(db, "chats", chatId);
+    
+    // Listen for real-time updates to the chat document (e.g., acceptedBy array changes)
+    const unsubscribe = onSnapshot(chatRef, async (chatSnap) => {
       if (chatSnap.exists()) {
         const chatData = chatSnap.data();
         setChatMeta({ id: chatId, ...chatData });
+        
         if (chatData.rideId) {
-          const rideRef = doc(db, "rides", chatData.rideId);
-          const rideSnap = await getDoc(rideRef);
-          if (rideSnap.exists()) {
-            setRide({ id: rideSnap.id, ...rideSnap.data() });
+          try {
+            // Also fetch ride details to ensure we have the latest status
+            const rideRef = doc(db, "rides", chatData.rideId);
+            const rideSnap = await getDoc(rideRef);
+            if (rideSnap.exists()) {
+              setRide({ id: rideSnap.id, ...rideSnap.data() });
+            }
+          } catch (err) {
+            console.error("Error fetching linked ride:", err);
           }
         }
       }
-    };
-    fetchMeta();
+    });
+
+    return () => unsubscribe();
   }, [chatId]);
 
   // Send a new message
   const sendMessage = async () => {
     if (newMessage.trim() === "") return;
     if (!auth.currentUser) {
-      alert("Please log in to send messages.");
+      notify.warn('Please log in to send messages.');
       return;
     }
     if (!chatId) {
@@ -244,6 +255,10 @@ const PrivateChat = () => {
         isCompleted: true,
       });
 
+      // Refresh reliability scores for both participants
+      if (thisUserId) refreshReliabilityScore(db, thisUserId).catch(() => {});
+      if (otherUserId) refreshReliabilityScore(db, otherUserId).catch(() => {});
+
       console.log('Ride marked as completed');
 
       // Create rating notifications for both users
@@ -275,16 +290,19 @@ const PrivateChat = () => {
       }
     } catch (error) {
       console.error('Error completing ride:', error);
-      alert('Error: ' + error.message);
+      notify.error('Error: ' + error.message);
     } finally {
       setCompleting(false);
     }
   };
 
+  // Determine the other user for the badge
+  const otherUserId = chatMeta?.participants?.find((p) => p && p !== auth.currentUser?.uid) || null;
+
   return (
     <div className="chat-window">
       <div className="chat-header">
-        <h3>💬 Private Chat</h3>
+        <h3>💬 Private Chat {otherUserId && <ReliabilityBadge userId={otherUserId} size="sm" inline />}</h3>
         <button onClick={() => navigate(-1)}>⬅ Back</button>
       </div>
 
@@ -368,6 +386,8 @@ const PrivateChat = () => {
                   averageRating: newAvg,
                   totalRatings: prevCount + 1,
                 });
+                // Refresh reliability for the rated user
+                refreshReliabilityScore(db, ratingTargetUserId).catch(() => {});
                 console.log('Rating submitted successfully');
                 setRatingSuccess(true);
                 
@@ -380,7 +400,7 @@ const PrivateChat = () => {
                 }, 2000);
               } catch (e) {
                 console.error('Failed to submit rating', e);
-                alert('Error submitting rating: ' + e.message);
+                notify.error('Error submitting rating: ' + e.message);
               } finally {
                 setSubmittingRating(false);
               }

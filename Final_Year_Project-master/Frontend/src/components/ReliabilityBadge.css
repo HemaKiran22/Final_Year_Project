@@ -1,0 +1,53 @@
+/* ═══════════════════════════════════════════════════════════
+   ReliabilityBadge.css — AI Reliability Score Badge Styles
+   ═══════════════════════════════════════════════════════════ */
+
+.reliability-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-weight: 600;
+  border: 1px solid;
+  white-space: nowrap;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  cursor: default;
+}
+.reliability-badge:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Inline variant (for headers, ride cards) */
+.rb-inline {
+  vertical-align: middle;
+}
+
+/* Sizes */
+.rb-sm {
+  font-size: 11px;
+  padding: 2px 8px;
+}
+.rb-sm .rb-icon { font-size: 10px; }
+
+.rb-md {
+  font-size: 13px;
+  padding: 4px 12px;
+}
+.rb-md .rb-icon { font-size: 13px; }
+
+.rb-lg {
+  font-size: 15px;
+  padding: 6px 16px;
+}
+.rb-lg .rb-icon { font-size: 16px; }
+
+.rb-score {
+  font-weight: 700;
+}
+
+.rb-label {
+  font-weight: 500;
+  opacity: 0.85;
+}

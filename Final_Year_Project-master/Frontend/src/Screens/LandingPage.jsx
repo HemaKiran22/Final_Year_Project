@@ -125,6 +125,8 @@ const LandingPage = () => {
             <a href="#how-it-works">How It Works</a>
             <a href="#testimonials">Testimonials</a>
             <a href="#faq">FAQ</a>
+            <Link to="/about">About Us</Link>
+            <Link to="/contact">Contact Us</Link>
             <div className="auth-buttons">
               <Link to="/login">
                 <button className="auth-button login">Login</button>
@@ -520,7 +522,7 @@ const LandingPage = () => {
     <div className="cta-buttons">
       {/* Download Buttons */}
       <motion.a
-        href="#"
+        href="https://play.google.com/store/games?hl=en_IN"
         className="cta-download-btn google"
         whileHover={{ scale: 1.1, boxShadow: "0px 0px 20px #34d399" }}
         whileTap={{ scale: 0.95 }}
@@ -530,7 +532,7 @@ const LandingPage = () => {
       </motion.a>
 
       <motion.a
-        href="#"
+        href="https://apps.apple.com/in/app/colonycarpool/idYOUR_APP_ID"
         className="cta-download-btn apple"
         whileHover={{ scale: 1.1, boxShadow: "0px 0px 20px #60a5fa" }}
         whileTap={{ scale: 0.95 }}

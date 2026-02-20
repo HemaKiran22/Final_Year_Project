@@ -46,6 +46,15 @@ export async function searchRidesByQuery(db, q) {
     // Date match if provided
     if (q.dateISO) {
       if ((r.date || '') !== q.dateISO) return false;
+    } else {
+      // If no specific date requested, filter out PAST dates (yesterday or older)
+      // We assume rides generally happen on the date specified.
+      if (r.date) {
+        const rideDate = new Date(r.date);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0); // start of today
+        if (rideDate < today) return false;
+      }
     }
     // Seats available (backward-compatible)
     const totalSeats = Number(r.totalSeats || r.seats) || 1;

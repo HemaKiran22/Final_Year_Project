@@ -50,13 +50,13 @@ const Signup = () => {
         createdAt: new Date()
       });
 
-      setMessage('Signup successful! Your account is pending admin approval.');
+      setMessage('Signup successful! Redirecting to login...');
       setFormData({ name: '', phoneNumber: '', housingSociety: 'Brigade', flatNumber: '', email: '', password: '' });
       
       try {
         await signOut(auth);
       } catch {}
-      navigate('/login', { state: { pendingApproval: true } });
+      navigate('/login');
 
     } catch (error) {
       console.error("Signup error:", error);

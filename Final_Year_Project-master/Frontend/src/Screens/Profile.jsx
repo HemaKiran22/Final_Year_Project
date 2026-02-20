@@ -1,9 +1,12 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { FaUserCircle, FaCar, FaMoneyBillWave, FaPhone, FaHome, FaIdBadge, FaShieldAlt, FaStar } from 'react-icons/fa';
+import { FaUserCircle, FaCar, FaMoneyBillWave, FaPhone, FaHome, FaIdBadge, FaShieldAlt, FaStar, FaSyncAlt } from 'react-icons/fa';
 import { auth } from '../firebase.js';
 import { doc as firestoreDoc, onSnapshot as firestoreOnSnapshot, updateDoc } from "firebase/firestore";
 import { updateProfile } from "firebase/auth";
 import { db } from '../firebase.js';
+import { classifyReliability, refreshReliabilityScore } from '../services/reliabilityService';
+import ReliabilityBadge from '../components/ReliabilityBadge';
+import notify from '../utils/notify';
 import './Profile.css';
 
 const Profile = () => {
@@ -75,11 +78,11 @@ const Profile = () => {
         });
       }
       // Note: Updating the email via Firebase auth requires re-authentication for security.
-      alert('Profile updated successfully!');
+      notify.success('Profile updated successfully!', '✅ Profile Updated');
       setIsEditing(false);
     } catch (error) {
       console.error("Error updating profile:", error);
-      alert('Failed to update profile.');
+      notify.error('Failed to update profile.');
     }
   };
 
@@ -98,19 +101,20 @@ const Profile = () => {
     return Math.round((filled / fields.length) * 100);
   }, [editableUserInfo.displayName, user?.displayName, userProfile]);
 
-  const trust = useMemo(() => {
-    const idVerified = userProfile?.status === 'approved' ? 1 : 0;
-    const avgRating = Number(userProfile?.averageRating || 0);
-    const ridesCompleted = Number(userProfile?.ridesShared || 0);
-    const comp = completeness; // 0-100
-    // Simple heuristic score in [0,1]
-    const score = 0.4 * idVerified + 0.3 * (avgRating / 5) + 0.2 * (Math.min(ridesCompleted, 20) / 20) + 0.1 * (comp / 100);
-    let label = 'Neutral';
-    let color = 'neutral';
-    if (score < 0.4) { label = 'Risky'; color = 'risky'; }
-    else if (score >= 0.7) { label = 'Highly Trusted'; color = 'trusted'; }
-    return { score: Math.round(score * 100), label, color };
-  }, [userProfile, completeness]);
+  // AI Reliability Score (from Firestore, set by reliabilityService)
+  const reliabilityScore = userProfile?.reliabilityScore ?? null;
+  const reliabilityTier  = reliabilityScore !== null ? classifyReliability(reliabilityScore) : null;
+  const reliabilityFactors = userProfile?.reliabilityFactors || null;
+  const [refreshingReliability, setRefreshingReliability] = useState(false);
+
+  const handleRefreshReliability = async () => {
+    if (!user?.uid || refreshingReliability) return;
+    setRefreshingReliability(true);
+    try {
+      await refreshReliabilityScore(db, user.uid);
+    } catch (e) { console.error(e); }
+    setRefreshingReliability(false);
+  };
 
   if (!user) {
     return <div className="loading">Loading profile...</div>;
@@ -136,18 +140,25 @@ const Profile = () => {
               <h1>{user.displayName || 'Not provided'}</h1>
             )}
             <p className="profile-email">{user.email || 'Not provided'}</p>
-            <div className={`trust-badge ${trust.color}`} title={`Score: ${trust.score}/100`}>
-              {trust.label}
-            </div>
-            <div className="trust-meter" aria-label={`Trust ${trust.score}%`} title={`Trust ${trust.score}%`}>
-              <div
-                className="trust-meter-ring"
-                style={{ background: `conic-gradient(#22c55e ${trust.score * 3.6}deg, #e5e7eb 0deg)` }}
-              >
-                <div className="trust-meter-inner">{trust.score}</div>
+            {/* AI Reliability Badge */}
+            {reliabilityTier ? (
+              <div className={`trust-badge`} style={{ background: reliabilityTier.bg, color: reliabilityTier.color, border: `1px solid ${reliabilityTier.border}` }}>
+                {reliabilityTier.icon} {reliabilityTier.label}
               </div>
-              <span className="trust-meter-label">Trust</span>
-            </div>
+            ) : (
+              <div className="trust-badge neutral">Score pending...</div>
+            )}
+            {reliabilityScore !== null && (
+              <div className="trust-meter" aria-label={`Reliability ${reliabilityScore}%`} title={`Reliability ${reliabilityScore}/100`}>
+                <div
+                  className="trust-meter-ring"
+                  style={{ background: `conic-gradient(${reliabilityTier?.color || '#22c55e'} ${reliabilityScore * 3.6}deg, #e5e7eb 0deg)` }}
+                >
+                  <div className="trust-meter-inner">{reliabilityScore}</div>
+                </div>
+                <span className="trust-meter-label">AI Score</span>
+              </div>
+            )}
 
             {/* Info chips */}
             <div className="info-chips">
@@ -166,13 +177,31 @@ const Profile = () => {
             </div>
             <div style={{ marginTop: 8 }}>
               <details style={{ cursor: 'pointer' }}>
-                <summary style={{ color: '#4b5563' }}>How is trust computed?</summary>
+                <summary style={{ color: '#4b5563' }}>How is AI Reliability computed?</summary>
                 <div style={{ fontSize: '0.9rem', color: '#374151', marginTop: 6 }}>
-                  <div>• Verification: 40% (approved account)</div>
-                  <div>• Average rating: 30% (out of 5)</div>
-                  <div>• Ride history: 20% (capped at 20 rides)</div>
-                  <div>• Profile completeness: 10%</div>
-                  <div style={{ marginTop: 6, color: '#6b7280' }}>Tip: Complete your profile and maintain high ratings to improve your trust.</div>
+                  <div>• Ride completion ratio: 35%</div>
+                  <div>• Late cancellations: 15% penalty weight</div>
+                  <div>• No-shows: 20% penalty weight (harshest)</div>
+                  <div>• Early cancellations: 10% penalty weight</div>
+                  <div>• Average rating: 20%</div>
+                  {reliabilityFactors && (
+                    <div style={{ marginTop: 8, padding: '8px 10px', background: '#f9fafb', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
+                      <strong>Your Factor Breakdown:</strong>
+                      <div>Completion: {reliabilityFactors.completionRatio?.toFixed(0) ?? '—'}/100</div>
+                      <div>Early Cancel: {reliabilityFactors.earlyPenalty?.toFixed(0) ?? '—'}/100</div>
+                      <div>Late Cancel: {reliabilityFactors.latePenalty?.toFixed(0) ?? '—'}/100</div>
+                      <div>No-show: {reliabilityFactors.noShowPenalty?.toFixed(0) ?? '—'}/100</div>
+                      <div>Rating: {reliabilityFactors.ratingFactor?.toFixed(0) ?? '—'}/100</div>
+                    </div>
+                  )}
+                  <div style={{ marginTop: 6, color: '#6b7280' }}>Tip: Complete rides on time and maintain high ratings to improve your score.</div>
+                  <button
+                    onClick={handleRefreshReliability}
+                    disabled={refreshingReliability}
+                    style={{ marginTop: 8, padding: '6px 14px', borderRadius: '8px', border: '1px solid #d1d5db', background: '#fff', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem' }}
+                  >
+                    <FaSyncAlt className={refreshingReliability ? 'spin-icon' : ''} /> {refreshingReliability ? 'Refreshing...' : 'Refresh Score'}
+                  </button>
                 </div>
               </details>
             </div>
@@ -268,7 +297,7 @@ const Profile = () => {
                 </div>
                 <div className="field">
                   <label>Vehicle Type</label>
-                  <input name="vehicleType" value={editableUserInfo.vehicleType} onChange={handleInputChange} placeholder="car / auto / bike" />
+                  <input name="vehicleType" value={editableUserInfo.vehicleType} onChange={handleInputChange} placeholder="car / auto" />
                 </div>
                 <div className="field">
                   <label>Emergency Contact</label>

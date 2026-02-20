@@ -1,4 +1,5 @@
 import { runTransaction, doc, addDoc, collection, serverTimestamp, query, where, getDocs, updateDoc, getDoc, arrayUnion } from 'firebase/firestore';
+import { refreshReliabilityScore } from './reliabilityService';
 
 /* ───────────────────────── helpers ───────────────────────── */
 
@@ -114,6 +115,8 @@ export async function joinRideById(db, auth, ride, userNameHint) {
         });
       } catch {}
     }
+    // Update reliability score (best-effort, non-blocking)
+    refreshReliabilityScore(db, user.uid).catch(() => {});
     return { ok: true, availableSeats: updatedAvailable };
   } catch (e) {
     return { ok: false, reason: 'transaction-failed', message: e?.message || String(e) };
@@ -205,6 +208,8 @@ export async function leaveRide(db, auth, ride, userNameHint) {
       } catch {}
     }
 
+    // Update reliability for the co-rider who left
+    refreshReliabilityScore(db, user.uid).catch(() => {});
     return { ok: true, cancelType };
   } catch (e) {
     return { ok: false, reason: 'transaction-failed', message: e?.message || String(e) };
@@ -271,6 +276,8 @@ export async function cancelRideByCreator(db, auth, ride, userNameHint) {
       }
     } catch {}
 
+    // Update reliability for the creator
+    refreshReliabilityScore(db, user.uid).catch(() => {});
     return { ok: true };
   } catch (e) {
     return { ok: false, reason: 'error', message: e?.message || String(e) };
@@ -314,6 +321,8 @@ export async function markNoShow(db, auth, ride, targetUserId) {
       });
     } catch {}
 
+    // Update reliability for the no-show user
+    refreshReliabilityScore(db, targetUserId).catch(() => {});
     return { ok: true };
   } catch (e) {
     return { ok: false, message: e?.message || String(e) };

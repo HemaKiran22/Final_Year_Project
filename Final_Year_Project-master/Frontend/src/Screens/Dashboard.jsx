@@ -2,11 +2,17 @@ import React, { useState, useEffect, useRef } from 'react';
 import { collection, onSnapshot, addDoc, query, where, getDocs, doc, setDoc, getDoc, updateDoc, orderBy } from "firebase/firestore";
 import { signOut } from "firebase/auth";
 import { auth, db } from "../firebase.js";
-import { FaUserCircle, FaCog, FaSignOutAlt, FaPlus, FaComments, FaTrophy, FaRobot, FaUser, FaTimes, FaCar, FaMoneyBillWave, FaSun, FaPaperPlane, FaRoute, FaLeaf, FaStar, FaBell, FaHome, FaRoad, FaCalendarAlt, FaUsers, FaQuestionCircle, FaMapMarkerAlt, FaMoon, FaBullseye, FaBolt, FaFire, FaChartLine, FaMedal, FaBars } from 'react-icons/fa';
+import { FaUserCircle, FaCog, FaSignOutAlt, FaPlus, FaComments, FaTrophy, FaRobot, FaUser, FaTimes, FaCar, FaMoneyBillWave, FaSun, FaPaperPlane, FaRoute, FaLeaf, FaStar, FaBell, FaHome, FaRoad, FaCalendarAlt, FaUsers, FaQuestionCircle, FaMapMarkerAlt, FaMoon, FaBullseye, FaBolt, FaFire, FaChartLine, FaMedal, FaBars, FaSearch, FaClock } from 'react-icons/fa';
 import logo from "../assets/logo.png";
 import './Dashboard.css';
 import { useNavigate } from 'react-router-dom';
 import { createOrGetPrivateChat, joinRideById, leaveRide, cancelRideByCreator, markNoShow, resolveRideStatus, getParticipantIds, parseRideDateTime, LATE_CANCEL_WINDOW_MS } from '../services/rideActionService';
+import { searchRidesByQuery } from '../services/rideSearchService';
+import { refreshReliabilityScore } from '../services/reliabilityService';
+import { getRecommendedRides, getQuickRecommendations, RECOMMEND_MIN_SCORE } from '../services/rideRecommendationService';
+import ReliabilityBadge from '../components/ReliabilityBadge';
+import ClusteredRideGroups from '../components/ClusteredRideGroups';
+import notify from '../utils/notify';
 
 import HelpSupport from './HelpSupport';
 
@@ -48,6 +54,16 @@ const Dashboard = () => {
 
   // Recommendations & grouping
   const [suggestedRides, setSuggestedRides] = useState([]);
+  const [recLoading, setRecLoading] = useState(false);
+  const [recSearchPrefs, setRecSearchPrefs] = useState({ destination: '', time24: '', minReliability: '' });
+  const [showRecSearch, setShowRecSearch] = useState(false);
+
+  // Find a Ride modal state
+  const [showFindRideModal, setShowFindRideModal] = useState(false);
+  const [findRideQuery, setFindRideQuery] = useState({ destination: '', date: '', time: '' });
+  const [findRideResults, setFindRideResults] = useState([]);
+  const [findRideLoading, setFindRideLoading] = useState(false);
+  const [findRideSearched, setFindRideSearched] = useState(false);
 
 
   // Post ride form model + filters
@@ -170,7 +186,8 @@ const Dashboard = () => {
 
         const currentData = docSnap.exists() ? docSnap.data() : { status: 'pending_approval' };
         if (currentData.status !== 'approved') {
-          navigate('/approval');
+          await signOut(auth);
+          navigate('/login');
           return;
         }
 
@@ -348,7 +365,7 @@ const Dashboard = () => {
           read: false,
         });
       }
-      alert('Notified co-riders that you are running late.');
+      notify.success('Notified co-riders that you are running late.', '🏃 Running Late');
     } catch (err) {
       console.error('Failed to send running late message:', err);
     }
@@ -408,36 +425,72 @@ const Dashboard = () => {
     setAchievements(newAchievements);
   };
 
-  // Calculate suggested rides based on user's community and time preferences
-  const calculateSuggestedRides = (userCommunity) => {
+  // AI-powered ride recommendations
+  const calculateSuggestedRides = async (userCommunity) => {
     if (!allRides || allRides.length === 0) {
       setSuggestedRides([]);
       return;
     }
+    setRecLoading(true);
+    try {
+      // Gather recent destinations from user's own rides
+      const recentDests = myRides
+        .filter(r => r.destination)
+        .map(r => r.destination)
+        .slice(0, 3);
 
-    const now = new Date();
-    const suggested = allRides
-      .filter(ride => {
-        const rideStatus = resolveRideStatus(ride);
-        const pIds = getParticipantIds(ride);
-        const totalSeats = Number(ride.totalSeats || ride.seats) || 1;
-        const availableSeats = ride.availableSeats != null ? Number(ride.availableSeats) : (totalSeats - pIds.length);
-        return (
-          ride.driverId !== userId && // Not my ride
-          ride.community === userCommunity && // Same community
-          rideStatus === 'open' && // Only open rides (excludes cancelled/closed/completed)
-          new Date(`${ride.date} ${ride.time}`) > now && // Future ride
-          availableSeats > 0 // Has seats
-        );
-      })
-      .sort((a, b) => {
-        const timeA = new Date(`${a.date} ${a.time}`);
-        const timeB = new Date(`${b.date} ${b.time}`);
-        return timeA - timeB; // Sort by soonest first
-      })
-      .slice(0, 3); // Top 3 suggestions
+      const recs = await getQuickRecommendations(db, allRides, {
+        userId,
+        community: userCommunity,
+        recentDestinations: recentDests,
+      });
+      setSuggestedRides(recs);
+    } catch (err) {
+      console.error('Recommendation engine error:', err);
+      setSuggestedRides([]);
+    }
+    setRecLoading(false);
+  };
 
-    setSuggestedRides(suggested);
+  // Explicit AI search with user preferences
+  const handleRecSearch = async () => {
+    if (!allRides || allRides.length === 0) return;
+    setRecLoading(true);
+    try {
+      const recs = await getRecommendedRides(db, allRides, {
+        destination: recSearchPrefs.destination || '',
+        time24: recSearchPrefs.time24 || null,
+        minReliability: recSearchPrefs.minReliability ? Number(recSearchPrefs.minReliability) : null,
+        userId,
+        community: userProfile?.housingSociety || null,
+      });
+      setSuggestedRides(recs);
+    } catch (err) {
+      console.error('Recommendation search error:', err);
+    }
+    setRecLoading(false);
+  };
+
+  // Find a Ride search handler
+  const handleFindRideSearch = async (e) => {
+    e && e.preventDefault();
+    setFindRideLoading(true);
+    setFindRideSearched(true);
+    try {
+      const results = await searchRidesByQuery(db, {
+        destination: findRideQuery.destination || '',
+        dateISO: findRideQuery.date || '',
+        time24: findRideQuery.time || null,
+        timeWindowMinutes: 60,
+      });
+      // Filter out own rides
+      const filtered = results.filter(r => r.driverId !== userId);
+      setFindRideResults(filtered);
+    } catch (err) {
+      console.error('Find ride search error:', err);
+      setFindRideResults([]);
+    }
+    setFindRideLoading(false);
   };
 
   const handleInputChange = (e) => {
@@ -462,24 +515,24 @@ const Dashboard = () => {
   const handlePostRide = async (e) => {
     e.preventDefault();
     if (!userId) {
-      alert("You must be logged in to post a ride.");
+      notify.warn('You must be logged in to post a ride.');
       return;
     }
     // Validate date/time: must be in the future
     try {
       const [hh, mm] = String(newRide.time || '').split(':').map(x => parseInt(x, 10));
       if (!newRide.date || isNaN(hh) || isNaN(mm)) {
-        alert('Please select a valid date and time.');
+        notify.warn('Please select a valid date and time.');
         return;
       }
       const selected = new Date(`${newRide.date}T${String(hh).padStart(2,'0')}:${String(mm).padStart(2,'0')}:00`);
       const now = new Date();
       if (selected.getTime() <= now.getTime()) {
-        alert('Please choose a future time. Past times are not allowed.');
+        notify.warn('Please choose a future time. Past times are not allowed.');
         return;
       }
     } catch {
-      alert('Please select a valid date and time.');
+      notify.warn('Please select a valid date and time.');
       return;
     }
     try {
@@ -506,7 +559,7 @@ const Dashboard = () => {
         participants: [{ userId: userId, joinedAt: new Date().toISOString() }],
         cancellationLog: [],
       });
-      alert('Ride posted successfully!');
+      notify.success(`Ride to ${newRide.destination} on ${newRide.date} posted successfully!`, '🚗 Ride Posted!');
       setNewRide({
         destination: '',
         date: '',
@@ -522,7 +575,7 @@ const Dashboard = () => {
       setShowPostRideForm(false);
     } catch (e) {
       console.error("Error adding document: ", e);
-      alert('Failed to post ride.');
+      notify.error('Failed to post ride. Please try again.');
     }
   };
 
@@ -555,7 +608,7 @@ const Dashboard = () => {
 
   const handleConfirmRide = async (ride) => {
     if (ride.isCompleted) {
-      alert("This ride has already been confirmed.");
+      notify.warn('This ride has already been confirmed.');
       return;
     }
   
@@ -609,8 +662,14 @@ const Dashboard = () => {
           });
         }
   
-        alert(`Ride to ${ride.destination} confirmed! You have earned ₹${moneySavedPerPerson.toFixed(2)}.`);
+        notify.success(`Ride to ${ride.destination} confirmed! You earned ₹${moneySavedPerPerson.toFixed(2)}.`, '✅ Ride Confirmed!');
         
+        // Refresh reliability for all participants (best-effort)
+        const allIds = [ride.driverId, ...passengerIds].filter(Boolean);
+        for (const uid of new Set(allIds)) {
+          refreshReliabilityScore(db, uid).catch(() => {});
+        }
+
         // Show rating modal based on role
         if (isDriver && passengerIds.length > 0) {
           // Driver rates the first passenger
@@ -625,7 +684,7 @@ const Dashboard = () => {
         }
       } catch (error) {
         console.error("Error confirming ride:", error);
-        alert("Failed to confirm the ride. Please try again.");
+        notify.error('Failed to confirm the ride. Please try again.');
       }
     }
   };
@@ -643,6 +702,8 @@ const Dashboard = () => {
         averageRating: newAvg,
         totalRatings: prevCount + 1,
       });
+      // Refresh reliability for the rated user (rating affects their score)
+      refreshReliabilityScore(db, ratingTargetUserId).catch(() => {});
     } catch (e) {
       console.error('Failed to submit rating', e);
     } finally {
@@ -677,7 +738,6 @@ const Dashboard = () => {
   const getVehicleLabel = (type) => {
     switch(type) {
       case 'car': return '🚗 Car';
-      case 'bike': return '🏍️ Bike';
       case 'auto': return '🛺 Auto';
       default: return '🚗 ' + (type || 'Car');
     }
@@ -687,50 +747,50 @@ const Dashboard = () => {
 
   const handleJoinRide = async (ride) => {
     if (!userId) {
-      alert('Please login to join a ride.');
+      notify.warn('Please login to join a ride.');
       navigate('/login');
       return;
     }
     if (ride.driverId === userId) {
-      alert('This is your own ride.');
+      notify.info('This is your own ride.');
       return;
     }
     const passengers = Array.isArray(ride.passengers) ? ride.passengers : [];
     const pIds = getParticipantIds(ride);
     if (passengers.includes(userId) || pIds.includes(userId)) {
-      alert('You have already joined this ride.');
+      notify.info('You have already joined this ride.');
       return;
     }
     // Check ride status
     const rideStatus = resolveRideStatus(ride);
     if (rideStatus === 'closed') {
-      alert('This ride has been closed by the creator.');
+      notify.warn('This ride has been closed by the creator.');
       return;
     }
     if (rideStatus === 'completed') {
-      alert('This ride has already been completed.');
+      notify.warn('This ride has already been completed.');
       return;
     }
     if (rideStatus === 'cancelled') {
-      alert('This ride has been cancelled.');
+      notify.warn('This ride has been cancelled.');
       return;
     }
     const totalSeats = Number(ride.totalSeats || ride.seats) || 0;
     const availableSeats = ride.availableSeats != null ? Number(ride.availableSeats) : (totalSeats - pIds.length);
     if (availableSeats <= 0) {
-      alert('No seats available on this ride.');
+      notify.warn('No seats available on this ride.');
       return;
     }
     setJoiningRideId(ride.id);
     try {
       const res = await joinRideById(db, auth, ride, userName);
       if (res.ok) {
-        alert(`Successfully joined the ride to ${ride.destination}! ${availableSeats - 1} seat(s) remaining.`);
+        notify.success(`Successfully joined the ride to ${ride.destination}! ${availableSeats - 1} seat(s) remaining.`, '🎉 Ride Joined!');
       } else {
-        alert(res.message || 'Could not join this ride.');
+        notify.error(res.message || 'Could not join this ride.');
       }
     } catch (e) {
-      alert(e?.message || 'Failed to join ride.');
+      notify.error(e?.message || 'Failed to join ride.');
     } finally {
       setJoiningRideId(null);
     }
@@ -738,39 +798,39 @@ const Dashboard = () => {
 
   const handleCloseRide = async (ride) => {
     if (!userId || ride.driverId !== userId) {
-      alert('Only the ride creator can close this ride.');
+      notify.warn('Only the ride creator can close this ride.');
       return;
     }
     if (!window.confirm('Close this ride? No new passengers will be able to join, but chat will remain active.')) return;
     try {
       const rideRef = doc(db, 'rides', ride.id);
       await updateDoc(rideRef, { rideStatus: 'closed' });
-      alert('Ride closed successfully. No new passengers can join.');
+      notify.success('Ride closed successfully. No new passengers can join.', '🔒 Ride Closed');
     } catch (e) {
       console.error('Error closing ride:', e);
-      alert('Failed to close ride.');
+      notify.error('Failed to close ride.');
     }
   };
 
   const handleReopenRide = async (ride) => {
     if (!userId || ride.driverId !== userId) {
-      alert('Only the ride creator can reopen this ride.');
+      notify.warn('Only the ride creator can reopen this ride.');
       return;
     }
     const totalSeats = Number(ride.totalSeats || ride.seats) || 1;
     const pIds = getParticipantIds(ride);
     const available = totalSeats - pIds.length;
     if (available <= 0) {
-      alert('Cannot reopen — all seats are filled.');
+      notify.warn('Cannot reopen — all seats are filled.');
       return;
     }
     try {
       const rideRef = doc(db, 'rides', ride.id);
       await updateDoc(rideRef, { rideStatus: 'open', availableSeats: available });
-      alert('Ride reopened! Passengers can now join.');
+      notify.success('Ride reopened! Passengers can now join.', '🔓 Ride Reopened');
     } catch (e) {
       console.error('Error reopening ride:', e);
-      alert('Failed to reopen ride.');
+      notify.error('Failed to reopen ride.');
     }
   };
 
@@ -780,8 +840,8 @@ const Dashboard = () => {
   const handleLeaveRide = async (ride) => {
     if (!userId) return;
     const rideStatus = resolveRideStatus(ride);
-    if (rideStatus === 'completed') { alert('Cannot leave a completed ride.'); return; }
-    if (rideStatus === 'cancelled') { alert('This ride is already cancelled.'); return; }
+    if (rideStatus === 'completed') { notify.warn('Cannot leave a completed ride.'); return; }
+    if (rideStatus === 'cancelled') { notify.warn('This ride is already cancelled.'); return; }
 
     // Warn about late cancellation
     const startDT = parseRideDateTime(ride);
@@ -795,14 +855,17 @@ const Dashboard = () => {
     try {
       const res = await leaveRide(db, auth, ride, userName);
       if (res.ok) {
-        alert(res.cancelType === 'late'
-          ? 'You left the ride. A late cancellation penalty was applied to your trust score.'
-          : 'You have left the ride successfully.');
+        notify[res.cancelType === 'late' ? 'warn' : 'success'](
+          res.cancelType === 'late'
+            ? 'You left the ride. A late cancellation penalty was applied to your trust score.'
+            : 'You have left the ride successfully.',
+          res.cancelType === 'late' ? '⚠️ Late Cancellation' : '👋 Left Ride'
+        );
       } else {
-        alert(res.message || 'Could not leave ride.');
+        notify.error(res.message || 'Could not leave ride.');
       }
     } catch (e) {
-      alert(e?.message || 'Failed to leave ride.');
+      notify.error(e?.message || 'Failed to leave ride.');
     } finally {
       setLeavingRideId(null);
     }
@@ -811,19 +874,19 @@ const Dashboard = () => {
   /* ── Creator cancels entire ride (Scenario 2) ── */
   const handleCancelRide = async (ride) => {
     if (!userId || (ride.createdBy || ride.driverId) !== userId) {
-      alert('Only the ride creator can cancel the entire ride.');
+      notify.warn('Only the ride creator can cancel the entire ride.');
       return;
     }
     if (!window.confirm('Cancel this ride entirely? ALL passengers will be notified and the ride will be removed from search.')) return;
     try {
       const res = await cancelRideByCreator(db, auth, ride, userName);
       if (res.ok) {
-        alert('Ride cancelled. All passengers have been notified.');
+        notify.success('Ride cancelled. All passengers have been notified.', '🚫 Ride Cancelled');
       } else {
-        alert(res.message || 'Could not cancel ride.');
+        notify.error(res.message || 'Could not cancel ride.');
       }
     } catch (e) {
-      alert(e?.message || 'Failed to cancel ride.');
+      notify.error(e?.message || 'Failed to cancel ride.');
     }
   };
 
@@ -841,12 +904,12 @@ const Dashboard = () => {
     try {
       const res = await markNoShow(db, auth, noShowRide, targetUserId);
       if (res.ok) {
-        alert('No-show recorded. A strong trust penalty has been applied.');
+        notify.success('No-show recorded. A strong trust penalty has been applied.', '🚨 No-Show Recorded');
       } else {
-        alert(res.message || 'Could not mark no-show.');
+        notify.error(res.message || 'Could not mark no-show.');
       }
     } catch (e) {
-      alert(e?.message || 'Failed to mark no-show.');
+      notify.error(e?.message || 'Failed to mark no-show.');
     }
     setShowNoShowModal(false);
     setNoShowRide(null);
@@ -875,6 +938,7 @@ const Dashboard = () => {
         <div className="ride-driver">
           <div className="driver-avatar">{userName.charAt(0)}</div>
           <div className="driver-name">You</div>
+          {userId && <ReliabilityBadge userId={userId} size="sm" inline />}
         </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
               <span className={`status-chip ride-status-${rideStatus}`} style={{ background: getStatusColor(rideStatus), color: 'white', padding: '4px 12px', borderRadius: '12px', fontSize: '12px', fontWeight: '600' }}>
@@ -1012,11 +1076,11 @@ const Dashboard = () => {
       if (res.ok && res.chatId) {
         navigate(`/privatechat/${res.chatId}`);
       } else {
-        alert(res.message || 'Unable to open private chat.');
+        notify.error(res.message || 'Unable to open private chat.');
       }
     } catch (e) {
       console.error('Failed to open private chat', e);
-      alert('Failed to open private chat.');
+      notify.error('Failed to open private chat.');
     }
   };
 
@@ -1170,12 +1234,12 @@ const Dashboard = () => {
                   <p>Share your ride details with the community</p>
                   <span className="shortcut-hint" style={{ fontSize: '12px', color: 'var(--gray)', marginTop: '8px' }}>Press P</span>
                 </div>
-                <div className="feature-card" onClick={() => window.dispatchEvent(new CustomEvent('open-chatbot'))}>
+                <div className="feature-card" onClick={() => { setFindRideQuery({ destination: '', date: '', time: '' }); setFindRideResults([]); setFindRideSearched(false); setShowFindRideModal(true); }}>
                   <div className="card-icon">
-                    <FaRobot />
+                    <FaSearch />
                   </div>
                   <h3>Find a Ride</h3>
-                  <p>Use our AI agent to find the perfect ride</p>
+                  <p>Search rides by destination, date & time</p>
                 </div>
                 <div className="feature-card" onClick={() => navigate('/societyfeed')}>
                   <div className="card-icon">
@@ -1310,16 +1374,54 @@ const Dashboard = () => {
               )}
             </div>
 
-            {/* Suggested Rides Section */}
-            {suggestedRides.length > 0 && (
-              <div className="dashboard-section animate-in delay-1">
-                <div className="section-header">
-                  <h2 className="section-title"><FaBullseye style={{ marginRight: '10px' }} /> Suggested Rides for You</h2>
-                  <p className="section-subtitle">Based on your community and upcoming schedules</p>
+            {/* AI-Powered Ride Recommendations */}
+            <div className="dashboard-section animate-in delay-1">
+              <div className="section-header">
+                <h2 className="section-title"><FaBullseye style={{ marginRight: '10px' }} /> AI Ride Recommendations</h2>
+                <button
+                  className="rec-search-toggle"
+                  onClick={() => setShowRecSearch(prev => !prev)}
+                >
+                  {showRecSearch ? 'Hide Search' : '🔍 Search Rides'}
+                </button>
+              </div>
+              <p className="section-subtitle">Ranked by destination match, time proximity, creator reliability &amp; seat availability</p>
+
+              {/* Recommendation search panel */}
+              {showRecSearch && (
+                <div className="rec-search-panel">
+                  <input
+                    type="text"
+                    placeholder="Destination (e.g. Koramangala)"
+                    value={recSearchPrefs.destination}
+                    onChange={e => setRecSearchPrefs(p => ({ ...p, destination: e.target.value }))}
+                    className="rec-input"
+                  />
+                  <input
+                    type="time"
+                    value={recSearchPrefs.time24}
+                    onChange={e => setRecSearchPrefs(p => ({ ...p, time24: e.target.value }))}
+                    className="rec-input"
+                  />
+                  <input
+                    type="number"
+                    placeholder="Min reliability (0-100)"
+                    min="0" max="100"
+                    value={recSearchPrefs.minReliability}
+                    onChange={e => setRecSearchPrefs(p => ({ ...p, minReliability: e.target.value }))}
+                    className="rec-input rec-input-narrow"
+                  />
+                  <button className="btn btn-primary rec-search-btn" onClick={handleRecSearch} disabled={recLoading}>
+                    {recLoading ? 'Searching...' : 'Find Rides'}
+                  </button>
                 </div>
-                
+              )}
+
+              {recLoading && <div className="rec-loading">Analyzing rides...</div>}
+
+              {!recLoading && suggestedRides.length > 0 && (
                 <div className="rides-grid">
-                  {suggestedRides.map(ride => {
+                  {suggestedRides.map(({ ride, compositeScore, factors, recommended }) => {
                     const passengers = Array.isArray(ride.passengers) ? ride.passengers : [];
                     const pIds = getParticipantIds(ride);
                     const totalSeats = Number(ride.totalSeats || ride.seats) || 1;
@@ -1332,11 +1434,25 @@ const Dashboard = () => {
                     const isClosed = rideStatus === 'closed';
 
                     return (
-                    <div key={ride.id} className={`ride-card suggested-ride ${isFull ? 'ride-full' : ''} ${isClosed ? 'ride-closed' : ''}`}>
+                    <div key={ride.id} className={`ride-card suggested-ride ${recommended ? 'rec-highlighted' : ''} ${isFull ? 'ride-full' : ''} ${isClosed ? 'ride-closed' : ''}`}>
+                      {/* Recommended tag */}
+                      {recommended && (
+                        <div className="rec-tag">
+                          <span className="rec-tag-icon">⚡</span> Recommended for You
+                        </div>
+                      )}
+
+                      {/* AI Score bar */}
+                      <div className="rec-score-bar" title={`AI Match Score: ${compositeScore}/100  |  Dest: ${factors.destination}  Time: ${factors.time}  Reliability: ${factors.reliability}  Seats: ${factors.seats}`}>
+                        <div className="rec-score-fill" style={{ width: `${compositeScore}%`, background: compositeScore >= 70 ? '#22c55e' : compositeScore >= 45 ? '#f59e0b' : '#ef4444' }}></div>
+                        <span className="rec-score-text">{compositeScore}% match</span>
+                      </div>
+
                       <div className="ride-header">
                         <div className="ride-driver">
                           <div className="driver-avatar">{ride.driverName?.charAt(0) || 'U'}</div>
                           <div className="driver-name">{ride.driverName || 'Driver'}</div>
+                          {ride.driverId && <ReliabilityBadge userId={ride.driverId} size="sm" inline />}
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                           <span className={`status-chip ride-status-${rideStatus}`} style={{ background: getStatusColor(rideStatus), color: 'white', padding: '3px 10px', borderRadius: '10px', fontSize: '11px', fontWeight: '600' }}>
@@ -1403,9 +1519,26 @@ const Dashboard = () => {
                     );
                   })}
                 </div>
-              </div>
-            )}
+              )}
+
+              {!recLoading && suggestedRides.length === 0 && (
+                <div className="no-rides" style={{ padding: '20px', textAlign: 'center', color: 'var(--gray)' }}>
+                  <p>No recommendations yet. Try searching for a destination above!</p>
+                </div>
+              )}
+            </div>
             
+            {/* AI-Powered Ride Clustering */}
+            <ClusteredRideGroups
+              db={db}
+              userId={userId}
+              userName={userName}
+              community={userProfile?.society || userProfile?.community || ''}
+              allRides={allRides}
+              onJoinRide={handleJoinRide}
+              navigate={navigate}
+            />
+
             <div className="dashboard-section animate-in delay-2">
               <div className="section-header">
                 <h2 className="section-title">My Rides</h2>
@@ -1741,6 +1874,145 @@ const Dashboard = () => {
             <p style={{ marginTop: '20px', fontSize: '14px', color: 'var(--gray)', textAlign: 'center' }}>
               Shortcuts work when not typing in input fields
             </p>
+          </div>
+        </div>
+      )}
+
+      {/* Find a Ride Modal */}
+      {showFindRideModal && (
+        <div className="form-modal-overlay" onClick={(e) => e.target.className === 'form-modal-overlay' && setShowFindRideModal(false)}>
+          <div className="form-modal find-ride-modal">
+            <button className="close-btn" onClick={() => setShowFindRideModal(false)}>
+              <FaTimes />
+            </button>
+            <h2><FaSearch style={{ marginRight: '10px', color: 'var(--primary)' }} /> Find a Ride</h2>
+
+            <form onSubmit={handleFindRideSearch} className="find-ride-form">
+              <div className="form-group">
+                <label><FaMapMarkerAlt style={{ marginRight: '6px' }} /> Destination</label>
+                <input
+                  type="text"
+                  placeholder="Where are you going?"
+                  value={findRideQuery.destination}
+                  onChange={e => setFindRideQuery(p => ({ ...p, destination: e.target.value }))}
+                  autoFocus
+                />
+              </div>
+              <div className="form-group-inline">
+                <div className="form-group">
+                  <label><FaCalendarAlt style={{ marginRight: '6px' }} /> Date</label>
+                  <input
+                    type="date"
+                    value={findRideQuery.date}
+                    min={new Date().toISOString().split('T')[0]}
+                    onChange={e => setFindRideQuery(p => ({ ...p, date: e.target.value }))}
+                  />
+                </div>
+                <div className="form-group">
+                  <label><FaClock style={{ marginRight: '6px' }} /> Preferred Time</label>
+                  <input
+                    type="time"
+                    value={findRideQuery.time}
+                    onChange={e => setFindRideQuery(p => ({ ...p, time: e.target.value }))}
+                  />
+                </div>
+              </div>
+              <button type="submit" className="btn btn-primary find-ride-search-btn" disabled={findRideLoading}>
+                {findRideLoading ? 'Searching...' : 'Search Rides'}
+              </button>
+            </form>
+
+            {/* Results */}
+            {findRideLoading && (
+              <div className="find-ride-loading">
+                <div className="spinner"></div>
+                <p>Searching for available rides...</p>
+              </div>
+            )}
+
+            {!findRideLoading && findRideSearched && findRideResults.length === 0 && (
+              <div className="find-ride-no-results">
+                <FaRoute style={{ fontSize: '32px', color: 'var(--gray)', marginBottom: '10px' }} />
+                <p>No rides found matching your criteria.</p>
+                <p style={{ fontSize: '13px', color: 'var(--gray)' }}>Try broadening your search or changing the date/time.</p>
+              </div>
+            )}
+
+            {!findRideLoading && findRideResults.length > 0 && (
+              <div className="find-ride-results">
+                <h3 className="find-ride-results-title">{findRideResults.length} ride{findRideResults.length > 1 ? 's' : ''} found</h3>
+                <div className="find-ride-results-list">
+                  {findRideResults.map(ride => {
+                    const passengers = Array.isArray(ride.passengers) ? ride.passengers : [];
+                    const pIds = getParticipantIds(ride);
+                    const totalSeats = Number(ride.totalSeats || ride.seats) || 1;
+                    const availableSeats = ride.availableSeats != null ? Number(ride.availableSeats) : (totalSeats - pIds.length);
+                    const costPerPerson = totalSeats > 0 ? (Number(ride.price) || 0) / totalSeats : 0;
+                    const isFull = availableSeats <= 0;
+                    const alreadyJoined = passengers.includes(userId) || pIds.includes(userId);
+                    const isJoining = joiningRideId === ride.id;
+
+                    return (
+                      <div key={ride.id} className={`ride-card find-ride-card ${isFull ? 'ride-full' : ''}`}>
+                        <div className="ride-header">
+                          <div className="ride-driver">
+                            <div className="driver-avatar">{ride.driverName?.charAt(0) || 'U'}</div>
+                            <div className="driver-name">{ride.driverName || 'Driver'}</div>
+                            {ride.driverId && <ReliabilityBadge userId={ride.driverId} size="sm" inline />}
+                          </div>
+                          <div className="ride-date">{ride.date} at {ride.time}</div>
+                        </div>
+                        <div className="ride-details">
+                          <div className="ride-route">
+                            <div className="route-dot"></div>
+                            <div className="route-line"></div>
+                            <div className="route-dot end"></div>
+                            <div className="route-info">
+                              <div className="route-from"><span className="route-label from">From</span> {ride.from || 'Christ University'}</div>
+                              <div className="route-to"><span className="route-label to">To</span> {ride.destination}</div>
+                            </div>
+                          </div>
+                          <div className="ride-meta">
+                            <div className="meta-item"><FaCar /> {ride.vehicleType || 'Car'}</div>
+                            <div className="meta-item">₹{Number(ride.price) || 0}</div>
+                            <div className="meta-item">₹{costPerPerson.toFixed(0)}/person</div>
+                          </div>
+                          <div className="seat-indicator">
+                            <div className="seat-indicator-bar">
+                              <div className="seat-indicator-fill" style={{ width: `${totalSeats > 0 ? ((totalSeats - availableSeats) / totalSeats) * 100 : 0}%` }}></div>
+                            </div>
+                            <div className="seat-indicator-text">
+                              <span>{totalSeats - availableSeats}/{totalSeats} seats filled</span>
+                              <span className={`seats-remaining ${isFull ? 'full' : availableSeats <= 1 ? 'low' : ''}`}>
+                                {isFull ? 'Full' : `${availableSeats} seat${availableSeats > 1 ? 's' : ''} left`}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="ride-actions">
+                          <button
+                            className={`btn ${alreadyJoined ? 'btn-secondary' : 'btn-primary'} ${isFull && !alreadyJoined ? 'btn-disabled' : ''}`}
+                            onClick={() => !isFull && !alreadyJoined && !isJoining && handleJoinRide(ride)}
+                            disabled={isFull || alreadyJoined || isJoining}
+                          >
+                            {isJoining ? 'Joining...' : alreadyJoined ? '✓ Joined' : isFull ? 'Ride Full' : 'Join Ride'}
+                          </button>
+                          {!isFull && !alreadyJoined && (
+                            <button
+                              className="btn btn-secondary"
+                              onClick={() => createOrGetPrivateChat(db, auth, ride).then(chatId => chatId && navigate(`/privatechat/${chatId}`))}
+                              style={{ marginLeft: '10px' }}
+                            >
+                              Message Driver
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

@@ -9,6 +9,10 @@
               var(--background-color);
 }
 
+/* Refresh spin animation */
+@keyframes spin-refresh { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+.spin-icon { animation: spin-refresh 0.8s linear infinite; }
+
 .profile-card {
   position: relative;
   background: linear-gradient(180deg, rgba(255,255,255,0.9), rgba(255,255,255,0.85));
