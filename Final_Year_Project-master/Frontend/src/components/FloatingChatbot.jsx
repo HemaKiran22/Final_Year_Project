@@ -1080,7 +1080,7 @@ const FloatingChatbot = () => {
      ═══════════════════════════════════════════════════════ */
 
   return (
-    <div className={`floating-chat ${isOpen ? 'open' : ''}`}>
+    <div className={`floating-chat ${isOpen ? 'open' : ''} ${isOpen && isMinimized ? 'is-minimized' : ''}`}>
       {/* Toggle Bubble */}
       {!isOpen && (
         <button className="floating-chat-toggle" onClick={() => setIsOpen(true)} aria-label="Open chat">

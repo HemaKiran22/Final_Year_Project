@@ -51,7 +51,7 @@ const LandingPage = () => {
       name: "Priya Sharma",
       role: "Software Engineer",
       community: "Green Valley Apartments",
-      image: "👩‍💼",
+      image: "https://randomuser.me/api/portraits/women/44.jpg",
       quote: "ColonyCarpool has saved me ₹15,000 in just 3 months! Plus, I've made great friends in my community.",
       impact: { rides: 45, saved: 15000, co2: 207 }
     },
@@ -59,7 +59,7 @@ const LandingPage = () => {
       name: "Rajesh Kumar",
       role: "Marketing Manager",
       community: "Prestige Heights",
-      image: "👨‍💼",
+      image: "https://randomuser.me/api/portraits/men/76.jpg",
       quote: "The AI-powered grouping is amazing. I always find a ride within minutes, and splitting costs makes it so affordable.",
       impact: { rides: 62, saved: 22000, co2: 285 }
     },
@@ -67,7 +67,7 @@ const LandingPage = () => {
       name: "Ananya Reddy",
       role: "Teacher",
       community: "Sunshine Residency",
-      image: "👩‍🏫",
+      image: "https://randomuser.me/api/portraits/women/65.jpg",
       quote: "As a daily commuter, this app has been a game-changer. Safe, reliable, and eco-friendly!",
       impact: { rides: 38, saved: 12500, co2: 175 }
     }
@@ -136,7 +136,7 @@ const LandingPage = () => {
               </Link>
             </div>
           </div>
-          <div className="menu-toggle" onClick={() => setIsMenuOpen(!isMenuOpen)}>
+          <div className={`menu-toggle ${isMenuOpen ? 'menu-open' : ''}`} onClick={() => setIsMenuOpen(!isMenuOpen)}>
             <span></span>
             <span></span>
             <span></span>
@@ -369,7 +369,9 @@ const LandingPage = () => {
             transition={{ duration: 0.5 }}
           >
             <div className="story-header">
-              <div className="story-avatar">{successStories[currentStory].image}</div>
+              <div className="story-avatar">
+                <img src={successStories[currentStory].image} alt={successStories[currentStory].name} />
+              </div>
               <div className="story-info">
                 <h3>{successStories[currentStory].name}</h3>
                 <p className="story-role">{successStories[currentStory].role}</p>
@@ -448,19 +450,19 @@ const LandingPage = () => {
         text: "ColonyCarpool has transformed my daily commute. I've not only saved money but also made new friends in my apartment complex!",
         author: "Priya S.",
         society: "Green Valley Apartments",
-        avatar: "👩"
+        avatar: "https://randomuser.me/api/portraits/women/47.jpg"
       },
       {
         text: "As someone who's environmentally conscious, I love how I can track my carbon footprint reduction. The app is intuitive and secure.",
         author: "Rahul M.",
         society: "Sunrise Residency",
-        avatar: "👨"
+        avatar: "https://randomuser.me/api/portraits/men/32.jpg"
       },
       {
         text: "The verification process gave me peace of mind. Now my kids can carpool to college with trusted neighbors safely.",
         author: "Meena K.",
         society: "Prestige Enclave",
-        avatar: "👵"
+        avatar: "https://randomuser.me/api/portraits/women/58.jpg"
       }
     ].map((testimonial, index) => (
       <motion.div
@@ -478,10 +480,10 @@ const LandingPage = () => {
         <div className="testimonial-author">
           <motion.div
             className="author-avatar"
-            whileHover={{ rotate: 360 }}
-            transition={{ duration: 0.8 }}
+            whileHover={{ scale: 1.1 }}
+            transition={{ duration: 0.3 }}
           >
-            {testimonial.avatar}
+            <img src={testimonial.avatar} alt={testimonial.author} />
           </motion.div>
           <div className="author-details">
             <h4>{testimonial.author}</h4>
@@ -564,61 +566,28 @@ const LandingPage = () => {
       {/* Video Demo Modal */}
       {showVideoModal && (
         <div className="video-modal-overlay" onClick={() => setShowVideoModal(false)}>
-          <motion.div 
+          <motion.div
             className="video-modal"
             onClick={(e) => e.stopPropagation()}
             initial={{ scale: 0.5, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.5, opacity: 0 }}
+            style={{ maxWidth: '900px', width: '95%' }}
           >
             <button className="close-modal" onClick={() => setShowVideoModal(false)}>✕</button>
-            <h2 style={{ marginBottom: '20px', color: '#333' }}>🎥 See ColonyCarpool in Action</h2>
-            
-            <div className="video-container">
-              <div className="demo-placeholder" style={{
-                width: '100%',
-                height: '400px',
-                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                borderRadius: '12px',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: 'white',
-                position: 'relative',
-                overflow: 'hidden'
-              }}>
-                <div style={{ fontSize: '72px', marginBottom: '20px' }}>▶️</div>
-                <h3 style={{ fontSize: '24px', marginBottom: '10px' }}>Interactive App Demo</h3>
-                <p style={{ fontSize: '16px', opacity: '0.9' }}>Watch how easy it is to find and join rides</p>
-                
-                <div className="demo-features" style={{
-                  position: 'absolute',
-                  bottom: '20px',
-                  display: 'flex',
-                  gap: '20px',
-                  fontSize: '14px'
-                }}>
-                  <span>✓ Smart Matching</span>
-                  <span>✓ Real-time Tracking</span>
-                  <span>✓ Instant Payments</span>
-                </div>
-              </div>
-              
-              {/* Alternatively, embed a real video: */}
-              {/* <iframe 
-                width="100%" 
-                height="400" 
-                src="https://www.youtube.com/embed/YOUR_VIDEO_ID" 
-                frameBorder="0" 
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-                allowFullScreen
-                style={{ borderRadius: '12px' }}
-              ></iframe> */}
+            <h2 style={{ marginBottom: '16px', color: '#333' }}>🎥 See ColonyCarpool in Action</h2>
+            <div className="video-container" style={{ borderRadius: '12px', overflow: 'hidden', background: '#000' }}>
+              <video
+                controls
+                autoPlay
+                style={{ width: '100%', maxHeight: '500px', display: 'block', borderRadius: '12px' }}
+              >
+                <source src="/demo.mp4" type="video/mp4" />
+                Your browser does not support the video tag.
+              </video>
             </div>
-            
             <div style={{ marginTop: '20px', textAlign: 'center' }}>
-              <button 
+              <button
                 className="auth-button"
                 onClick={() => {
                   setShowVideoModal(false);

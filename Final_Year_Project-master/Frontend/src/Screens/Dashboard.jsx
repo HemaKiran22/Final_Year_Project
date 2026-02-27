@@ -941,7 +941,7 @@ const Dashboard = () => {
           {userId && <ReliabilityBadge userId={userId} size="sm" inline />}
         </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <span className={`status-chip ride-status-${rideStatus}`} style={{ background: getStatusColor(rideStatus), color: 'white', padding: '4px 12px', borderRadius: '12px', fontSize: '12px', fontWeight: '600' }}>
+              <span className={`status-chip ride-status-${rideStatus}`}>
                 {getRideStatusLabel(rideStatus)}
               </span>
               <div className="ride-date">{ride.date} at {ride.time}</div>
@@ -1455,7 +1455,7 @@ const Dashboard = () => {
                           {ride.driverId && <ReliabilityBadge userId={ride.driverId} size="sm" inline />}
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <span className={`status-chip ride-status-${rideStatus}`} style={{ background: getStatusColor(rideStatus), color: 'white', padding: '3px 10px', borderRadius: '10px', fontSize: '11px', fontWeight: '600' }}>
+                          <span className={`status-chip ride-status-${rideStatus}`}>
                             {getRideStatusLabel(rideStatus)}
                           </span>
                           <div className="ride-date">{ride.date} at {ride.time}</div>

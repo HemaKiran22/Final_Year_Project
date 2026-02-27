@@ -89,7 +89,17 @@ const Login = () => {
 
     } catch (error) {
       console.error("Login error:", error);
-      setMessage(`Error: ${error.message}`);
+      // Show a clear, friendly message for wrong credentials
+      const code = error.code || '';
+      if (code === 'auth/wrong-password' || code === 'auth/invalid-credential' || code === 'auth/invalid-login-credentials' || code === 'auth/user-not-found') {
+        setMessage('Please enter the correct details.');
+      } else if (code === 'auth/too-many-requests') {
+        setMessage('Too many failed attempts. Please try again later or reset your password.');
+      } else if (code === 'auth/invalid-email') {
+        setMessage('Please enter a valid email address.');
+      } else {
+        setMessage('Please enter the correct details.');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -114,7 +124,14 @@ const Login = () => {
       }, 3000);
     } catch (error) {
       console.error('Password reset error:', error);
-      setResetMessage(`Error: ${error.message}`);
+      const code = error.code || '';
+      if (code === 'auth/user-not-found') {
+        setResetMessage('No account found with that email. Please check and try again.');
+      } else if (code === 'auth/invalid-email') {
+        setResetMessage('Please enter a valid email address.');
+      } else {
+        setResetMessage('Failed to send reset email. Please try again.');
+      }
     }
   };
 
@@ -199,10 +216,14 @@ const Login = () => {
         </form>
         
         {message && (
-          <div className={`message ${message.includes('Error') ? 'error' : message.includes('wait') ? 'warning' : 'success'}`}
-            style={message.includes('wait') ? { background: '#fffbeb', color: '#92400e', border: '1px solid #fde68a', borderRadius: '10px', padding: '14px 18px', textAlign: 'center', fontWeight: '600' } : {}}
+          <div className={`message ${
+            message.includes('successful') ? 'success' :
+            message.includes('wait') || message.includes('approval') ? 'warning' :
+            'error'
+          }`}
+            style={message.includes('wait') || message.includes('approval') ? { background: '#fffbeb', color: '#92400e', border: '1px solid #fde68a', borderRadius: '10px', padding: '14px 18px', textAlign: 'center', fontWeight: '600' } : {}}
           >
-            {message.includes('wait') && <span style={{ display: 'block', fontSize: '20px', marginBottom: '6px' }}>⏳</span>}
+            {(message.includes('wait') || message.includes('approval')) && <span style={{ display: 'block', fontSize: '20px', marginBottom: '6px' }}>⏳</span>}
             {message}
           </div>
         )}

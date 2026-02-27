@@ -1,0 +1,654 @@
+{
+  "config": {
+    "configFile": "D:\\Desktop\\Final_Year_Project\\Final_Year_Project-master\\Frontend\\playwright.config.js",
+    "rootDir": "D:/Desktop/Final_Year_Project/Final_Year_Project-master/Frontend/tests",
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "D:/Desktop/Final_Year_Project/Final_Year_Project-master/Frontend/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "chromium",
+        "name": "chromium",
+        "testDir": "D:/Desktop/Final_Year_Project/Final_Year_Project-master/Frontend/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 60000
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "html",
+        {
+          "outputFolder": "playwright-report",
+          "open": "never"
+        }
+      ],
+      [
+        "json",
+        {
+          "outputFile": "playwright-report/results.json"
+        }
+      ],
+      [
+        "list",
+        null
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "runAgents": "none",
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.58.2",
+    "workers": 1,
+    "webServer": null
+  },
+  "suites": [
+    {
+      "title": "01-auth.spec.js",
+      "file": "01-auth.spec.js",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "Authentication",
+          "file": "01-auth.spec.js",
+          "line": 9,
+          "column": 6,
+          "specs": [
+            {
+              "title": "TC-AUTH-01 Valid login (User A)",
+              "ok": false,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "failed",
+                      "duration": 18964,
+                      "error": {
+                        "message": "TimeoutError: locator.waitFor: Timeout 15000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"email\"]') to be visible\u001b[22m\n",
+                        "stack": "TimeoutError: locator.waitFor: Timeout 15000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"email\"]') to be visible\u001b[22m\n\n    at D:\\Desktop\\Final_Year_Project\\Final_Year_Project-master\\Frontend\\tests\\01-auth.spec.js:13:47",
+                        "location": {
+                          "file": "D:\\Desktop\\Final_Year_Project\\Final_Year_Project-master\\Frontend\\tests\\01-auth.spec.js",
+                          "column": 47,
+                          "line": 13
+                        },
+                        "snippet": "\u001b[0m \u001b[90m 11 |\u001b[39m   test(\u001b[32m'TC-AUTH-01 Valid login (User A)'\u001b[39m\u001b[33m,\u001b[39m \u001b[36masync\u001b[39m ({ page }) \u001b[33m=>\u001b[39m {\n \u001b[90m 12 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mgoto(\u001b[32m'/login'\u001b[39m\u001b[33m,\u001b[39m { waitUntil\u001b[33m:\u001b[39m \u001b[32m'domcontentloaded'\u001b[39m })\u001b[33m;\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 13 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mlocator(\u001b[32m'input[name=\"email\"]'\u001b[39m)\u001b[33m.\u001b[39mwaitFor({ timeout\u001b[33m:\u001b[39m \u001b[35m15\u001b[39m_000 })\u001b[33m;\u001b[39m\n \u001b[90m    |\u001b[39m                                               \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 14 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mlocator(\u001b[32m'input[name=\"email\"]'\u001b[39m)\u001b[33m.\u001b[39mfill(\u001b[33mUSERS\u001b[39m\u001b[33m.\u001b[39m\u001b[33mA\u001b[39m\u001b[33m.\u001b[39memail)\u001b[33m;\u001b[39m\n \u001b[90m 15 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mlocator(\u001b[32m'input[name=\"password\"]'\u001b[39m)\u001b[33m.\u001b[39mfill(\u001b[33mUSERS\u001b[39m\u001b[33m.\u001b[39m\u001b[33mA\u001b[39m\u001b[33m.\u001b[39mpassword)\u001b[33m;\u001b[39m\n \u001b[90m 16 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mlocator(\u001b[32m'button[type=\"submit\"]'\u001b[39m)\u001b[33m.\u001b[39mclick()\u001b[33m;\u001b[39m\u001b[0m"
+                      },
+                      "errors": [
+                        {
+                          "location": {
+                            "file": "D:\\Desktop\\Final_Year_Project\\Final_Year_Project-master\\Frontend\\tests\\01-auth.spec.js",
+                            "column": 47,
+                            "line": 13
+                          },
+                          "message": "TimeoutError: locator.waitFor: Timeout 15000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"email\"]') to be visible\u001b[22m\n\n\n  11 |   test('TC-AUTH-01 Valid login (User A)', async ({ page }) => {\n  12 |     await page.goto('/login', { waitUntil: 'domcontentloaded' });\n> 13 |     await page.locator('input[name=\"email\"]').waitFor({ timeout: 15_000 });\n     |                                               ^\n  14 |     await page.locator('input[name=\"email\"]').fill(USERS.A.email);\n  15 |     await page.locator('input[name=\"password\"]').fill(USERS.A.password);\n  16 |     await page.locator('button[type=\"submit\"]').click();\n    at D:\\Desktop\\Final_Year_Project\\Final_Year_Project-master\\Frontend\\tests\\01-auth.spec.js:13:47"
+                        }
+                      ],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-02-26T12:06:51.199Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "D:\\Desktop\\Final_Year_Project\\Final_Year_Project-master\\Frontend\\test-results\\01-auth-Authentication-TC-AUTH-01-Valid-login-User-A--chromium\\test-failed-1.png"
+                        },
+                        {
+                          "name": "video",
+                          "contentType": "video/webm",
+                          "path": "D:\\Desktop\\Final_Year_Project\\Final_Year_Project-master\\Frontend\\test-results\\01-auth-Authentication-TC-AUTH-01-Valid-login-User-A--chromium\\video.webm"
+                        },
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "D:\\Desktop\\Final_Year_Project\\Final_Year_Project-master\\Frontend\\test-results\\01-auth-Authentication-TC-AUTH-01-Valid-login-User-A--chromium\\error-context.md"
+                        },
+                        {
+                          "name": "trace",
+                          "contentType": "application/zip",
+                          "path": "D:\\Desktop\\Final_Year_Project\\Final_Year_Project-master\\Frontend\\test-results\\01-auth-Authentication-TC-AUTH-01-Valid-login-User-A--chromium\\trace.zip"
+                        }
+                      ],
+                      "errorLocation": {
+                        "file": "D:\\Desktop\\Final_Year_Project\\Final_Year_Project-master\\Frontend\\tests\\01-auth.spec.js",
+                        "column": 47,
+                        "line": 13
+                      }
+                    }
+                  ],
+                  "status": "unexpected"
+                }
+              ],
+              "id": "bfce37c7b15ae2ffafd1-e6df11c604c7867087e5",
+              "file": "01-auth.spec.js",
+              "line": 11,
+              "column": 3
+            },
+            {
+              "title": "TC-AUTH-02 Valid login (User B)",
+              "ok": false,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 0,
+                      "status": "failed",
+                      "duration": 21737,
+                      "error": {
+                        "message": "TimeoutError: page.waitForSelector: Timeout 15000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"email\"]') to be visible\u001b[22m\n",
+                        "stack": "TimeoutError: page.waitForSelector: Timeout 15000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"email\"]') to be visible\u001b[22m\n\n    at login (D:\\Desktop\\Final_Year_Project\\Final_Year_Project-master\\Frontend\\tests\\helpers.js:35:14)\n    at D:\\Desktop\\Final_Year_Project\\Final_Year_Project-master\\Frontend\\tests\\01-auth.spec.js:25:5",
+                        "location": {
+                          "file": "D:\\Desktop\\Final_Year_Project\\Final_Year_Project-master\\Frontend\\tests\\helpers.js",
+                          "column": 14,
+                          "line": 35
+                        },
+                        "snippet": "\u001b[90m   at \u001b[39mhelpers.js:35\n\n\u001b[0m \u001b[90m 33 |\u001b[39m   \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mgoto(\u001b[32m'/login'\u001b[39m\u001b[33m,\u001b[39m { waitUntil\u001b[33m:\u001b[39m \u001b[32m'domcontentloaded'\u001b[39m })\u001b[33m;\u001b[39m\n \u001b[90m 34 |\u001b[39m   \u001b[90m// Wait for React to paint the login form\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 35 |\u001b[39m   \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mwaitForSelector(\u001b[32m'input[name=\"email\"]'\u001b[39m\u001b[33m,\u001b[39m { timeout\u001b[33m:\u001b[39m \u001b[35m15\u001b[39m_000 })\u001b[33m;\u001b[39m\n \u001b[90m    |\u001b[39m              \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 36 |\u001b[39m   \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mlocator(\u001b[32m'input[name=\"email\"]'\u001b[39m)\u001b[33m.\u001b[39mfill(user\u001b[33m.\u001b[39memail)\u001b[33m;\u001b[39m\n \u001b[90m 37 |\u001b[39m   \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mlocator(\u001b[32m'input[name=\"password\"]'\u001b[39m)\u001b[33m.\u001b[39mfill(user\u001b[33m.\u001b[39mpassword)\u001b[33m;\u001b[39m\n \u001b[90m 38 |\u001b[39m   \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mlocator(\u001b[32m'button[type=\"submit\"]'\u001b[39m)\u001b[33m.\u001b[39mclick()\u001b[33m;\u001b[39m\u001b[0m"
+                      },
+                      "errors": [
+                        {
+                          "location": {
+                            "file": "D:\\Desktop\\Final_Year_Project\\Final_Year_Project-master\\Frontend\\tests\\helpers.js",
+                            "column": 14,
+                            "line": 35
+                          },
+                          "message": "TimeoutError: page.waitForSelector: Timeout 15000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"email\"]') to be visible\u001b[22m\n\n\n   at helpers.js:35\n\n  33 |   await page.goto('/login', { waitUntil: 'domcontentloaded' });\n  34 |   // Wait for React to paint the login form\n> 35 |   await page.waitForSelector('input[name=\"email\"]', { timeout: 15_000 });\n     |              ^\n  36 |   await page.locator('input[name=\"email\"]').fill(user.email);\n  37 |   await page.locator('input[name=\"password\"]').fill(user.password);\n  38 |   await page.locator('button[type=\"submit\"]').click();\n    at login (D:\\Desktop\\Final_Year_Project\\Final_Year_Project-master\\Frontend\\tests\\helpers.js:35:14)\n    at D:\\Desktop\\Final_Year_Project\\Final_Year_Project-master\\Frontend\\tests\\01-auth.spec.js:25:5"
+                        }
+                      ],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-02-26T12:07:13.511Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "D:\\Desktop\\Final_Year_Project\\Final_Year_Project-master\\Frontend\\test-results\\01-auth-Authentication-TC-AUTH-02-Valid-login-User-B--chromium\\test-failed-1.png"
+                        },
+                        {
+                          "name": "video",
+                          "contentType": "video/webm",
+                          "path": "D:\\Desktop\\Final_Year_Project\\Final_Year_Project-master\\Frontend\\test-results\\01-auth-Authentication-TC-AUTH-02-Valid-login-User-B--chromium\\video.webm"
+                        },
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "D:\\Desktop\\Final_Year_Project\\Final_Year_Project-master\\Frontend\\test-results\\01-auth-Authentication-TC-AUTH-02-Valid-login-User-B--chromium\\error-context.md"
+                        },
+                        {
+                          "name": "trace",
+                          "contentType": "application/zip",
+                          "path": "D:\\Desktop\\Final_Year_Project\\Final_Year_Project-master\\Frontend\\test-results\\01-auth-Authentication-TC-AUTH-02-Valid-login-User-B--chromium\\trace.zip"
+                        }
+                      ],
+                      "errorLocation": {
+                        "file": "D:\\Desktop\\Final_Year_Project\\Final_Year_Project-master\\Frontend\\tests\\helpers.js",
+                        "column": 14,
+                        "line": 35
+                      }
+                    }
+                  ],
+                  "status": "unexpected"
+                }
+              ],
+              "id": "bfce37c7b15ae2ffafd1-394b1e53696fe053cbda",
+              "file": "01-auth.spec.js",
+              "line": 24,
+              "column": 3
+            },
+            {
+              "title": "TC-AUTH-03 Invalid email format shows error",
+              "ok": false,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 2,
+                      "parallelIndex": 0,
+                      "status": "failed",
+                      "duration": 28389,
+                      "error": {
+                        "message": "TimeoutError: locator.waitFor: Timeout 15000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"email\"]') to be visible\u001b[22m\n",
+                        "stack": "TimeoutError: locator.waitFor: Timeout 15000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"email\"]') to be visible\u001b[22m\n\n    at D:\\Desktop\\Final_Year_Project\\Final_Year_Project-master\\Frontend\\tests\\01-auth.spec.js:32:47",
+                        "location": {
+                          "file": "D:\\Desktop\\Final_Year_Project\\Final_Year_Project-master\\Frontend\\tests\\01-auth.spec.js",
+                          "column": 47,
+                          "line": 32
+                        },
+                        "snippet": "\u001b[0m \u001b[90m 30 |\u001b[39m   test(\u001b[32m'TC-AUTH-03 Invalid email format shows error'\u001b[39m\u001b[33m,\u001b[39m \u001b[36masync\u001b[39m ({ page }) \u001b[33m=>\u001b[39m {\n \u001b[90m 31 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mgoto(\u001b[32m'/login'\u001b[39m\u001b[33m,\u001b[39m { waitUntil\u001b[33m:\u001b[39m \u001b[32m'domcontentloaded'\u001b[39m })\u001b[33m;\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 32 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mlocator(\u001b[32m'input[name=\"email\"]'\u001b[39m)\u001b[33m.\u001b[39mwaitFor({ timeout\u001b[33m:\u001b[39m \u001b[35m15\u001b[39m_000 })\u001b[33m;\u001b[39m\n \u001b[90m    |\u001b[39m                                               \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 33 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mlocator(\u001b[32m'input[name=\"email\"]'\u001b[39m)\u001b[33m.\u001b[39mfill(\u001b[32m'not-an-email'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m 34 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mlocator(\u001b[32m'input[name=\"password\"]'\u001b[39m)\u001b[33m.\u001b[39mfill(\u001b[32m'somepassword'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m 35 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mlocator(\u001b[32m'button[type=\"submit\"]'\u001b[39m)\u001b[33m.\u001b[39mclick()\u001b[33m;\u001b[39m\u001b[0m"
+                      },
+                      "errors": [
+                        {
+                          "location": {
+                            "file": "D:\\Desktop\\Final_Year_Project\\Final_Year_Project-master\\Frontend\\tests\\01-auth.spec.js",
+                            "column": 47,
+                            "line": 32
+                          },
+                          "message": "TimeoutError: locator.waitFor: Timeout 15000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"email\"]') to be visible\u001b[22m\n\n\n  30 |   test('TC-AUTH-03 Invalid email format shows error', async ({ page }) => {\n  31 |     await page.goto('/login', { waitUntil: 'domcontentloaded' });\n> 32 |     await page.locator('input[name=\"email\"]').waitFor({ timeout: 15_000 });\n     |                                               ^\n  33 |     await page.locator('input[name=\"email\"]').fill('not-an-email');\n  34 |     await page.locator('input[name=\"password\"]').fill('somepassword');\n  35 |     await page.locator('button[type=\"submit\"]').click();\n    at D:\\Desktop\\Final_Year_Project\\Final_Year_Project-master\\Frontend\\tests\\01-auth.spec.js:32:47"
+                        }
+                      ],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-02-26T12:07:45.040Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "D:\\Desktop\\Final_Year_Project\\Final_Year_Project-master\\Frontend\\test-results\\01-auth-Authentication-TC--73d18-id-email-format-shows-error-chromium\\test-failed-1.png"
+                        },
+                        {
+                          "name": "video",
+                          "contentType": "video/webm",
+                          "path": "D:\\Desktop\\Final_Year_Project\\Final_Year_Project-master\\Frontend\\test-results\\01-auth-Authentication-TC--73d18-id-email-format-shows-error-chromium\\video.webm"
+                        },
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "D:\\Desktop\\Final_Year_Project\\Final_Year_Project-master\\Frontend\\test-results\\01-auth-Authentication-TC--73d18-id-email-format-shows-error-chromium\\error-context.md"
+                        },
+                        {
+                          "name": "trace",
+                          "contentType": "application/zip",
+                          "path": "D:\\Desktop\\Final_Year_Project\\Final_Year_Project-master\\Frontend\\test-results\\01-auth-Authentication-TC--73d18-id-email-format-shows-error-chromium\\trace.zip"
+                        }
+                      ],
+                      "errorLocation": {
+                        "file": "D:\\Desktop\\Final_Year_Project\\Final_Year_Project-master\\Frontend\\tests\\01-auth.spec.js",
+                        "column": 47,
+                        "line": 32
+                      }
+                    }
+                  ],
+                  "status": "unexpected"
+                }
+              ],
+              "id": "bfce37c7b15ae2ffafd1-abd0cba96445e2084618",
+              "file": "01-auth.spec.js",
+              "line": 30,
+              "column": 3
+            },
+            {
+              "title": "TC-AUTH-04 Wrong password shows friendly error",
+              "ok": false,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 3,
+                      "parallelIndex": 0,
+                      "status": "failed",
+                      "duration": 22352,
+                      "error": {
+                        "message": "TimeoutError: locator.waitFor: Timeout 15000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"email\"]') to be visible\u001b[22m\n",
+                        "stack": "TimeoutError: locator.waitFor: Timeout 15000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"email\"]') to be visible\u001b[22m\n\n    at D:\\Desktop\\Final_Year_Project\\Final_Year_Project-master\\Frontend\\tests\\01-auth.spec.js:44:47",
+                        "location": {
+                          "file": "D:\\Desktop\\Final_Year_Project\\Final_Year_Project-master\\Frontend\\tests\\01-auth.spec.js",
+                          "column": 47,
+                          "line": 44
+                        },
+                        "snippet": "\u001b[0m \u001b[90m 42 |\u001b[39m   test(\u001b[32m'TC-AUTH-04 Wrong password shows friendly error'\u001b[39m\u001b[33m,\u001b[39m \u001b[36masync\u001b[39m ({ page }) \u001b[33m=>\u001b[39m {\n \u001b[90m 43 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mgoto(\u001b[32m'/login'\u001b[39m\u001b[33m,\u001b[39m { waitUntil\u001b[33m:\u001b[39m \u001b[32m'domcontentloaded'\u001b[39m })\u001b[33m;\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 44 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mlocator(\u001b[32m'input[name=\"email\"]'\u001b[39m)\u001b[33m.\u001b[39mwaitFor({ timeout\u001b[33m:\u001b[39m \u001b[35m15\u001b[39m_000 })\u001b[33m;\u001b[39m\n \u001b[90m    |\u001b[39m                                               \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 45 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mlocator(\u001b[32m'input[name=\"email\"]'\u001b[39m)\u001b[33m.\u001b[39mfill(\u001b[33mUSERS\u001b[39m\u001b[33m.\u001b[39m\u001b[33mA\u001b[39m\u001b[33m.\u001b[39memail)\u001b[33m;\u001b[39m\n \u001b[90m 46 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mlocator(\u001b[32m'input[name=\"password\"]'\u001b[39m)\u001b[33m.\u001b[39mfill(\u001b[32m'wrongpassword123'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m 47 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mlocator(\u001b[32m'button[type=\"submit\"]'\u001b[39m)\u001b[33m.\u001b[39mclick()\u001b[33m;\u001b[39m\u001b[0m"
+                      },
+                      "errors": [
+                        {
+                          "location": {
+                            "file": "D:\\Desktop\\Final_Year_Project\\Final_Year_Project-master\\Frontend\\tests\\01-auth.spec.js",
+                            "column": 47,
+                            "line": 44
+                          },
+                          "message": "TimeoutError: locator.waitFor: Timeout 15000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"email\"]') to be visible\u001b[22m\n\n\n  42 |   test('TC-AUTH-04 Wrong password shows friendly error', async ({ page }) => {\n  43 |     await page.goto('/login', { waitUntil: 'domcontentloaded' });\n> 44 |     await page.locator('input[name=\"email\"]').waitFor({ timeout: 15_000 });\n     |                                               ^\n  45 |     await page.locator('input[name=\"email\"]').fill(USERS.A.email);\n  46 |     await page.locator('input[name=\"password\"]').fill('wrongpassword123');\n  47 |     await page.locator('button[type=\"submit\"]').click();\n    at D:\\Desktop\\Final_Year_Project\\Final_Year_Project-master\\Frontend\\tests\\01-auth.spec.js:44:47"
+                        }
+                      ],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-02-26T12:08:26.511Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "D:\\Desktop\\Final_Year_Project\\Final_Year_Project-master\\Frontend\\test-results\\01-auth-Authentication-TC--6b9f4-ssword-shows-friendly-error-chromium\\test-failed-1.png"
+                        },
+                        {
+                          "name": "video",
+                          "contentType": "video/webm",
+                          "path": "D:\\Desktop\\Final_Year_Project\\Final_Year_Project-master\\Frontend\\test-results\\01-auth-Authentication-TC--6b9f4-ssword-shows-friendly-error-chromium\\video.webm"
+                        },
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "D:\\Desktop\\Final_Year_Project\\Final_Year_Project-master\\Frontend\\test-results\\01-auth-Authentication-TC--6b9f4-ssword-shows-friendly-error-chromium\\error-context.md"
+                        },
+                        {
+                          "name": "trace",
+                          "contentType": "application/zip",
+                          "path": "D:\\Desktop\\Final_Year_Project\\Final_Year_Project-master\\Frontend\\test-results\\01-auth-Authentication-TC--6b9f4-ssword-shows-friendly-error-chromium\\trace.zip"
+                        }
+                      ],
+                      "errorLocation": {
+                        "file": "D:\\Desktop\\Final_Year_Project\\Final_Year_Project-master\\Frontend\\tests\\01-auth.spec.js",
+                        "column": 47,
+                        "line": 44
+                      }
+                    }
+                  ],
+                  "status": "unexpected"
+                }
+              ],
+              "id": "bfce37c7b15ae2ffafd1-b594b81e7b4ab98e2768",
+              "file": "01-auth.spec.js",
+              "line": 42,
+              "column": 3
+            },
+            {
+              "title": "TC-AUTH-05 Non-existent account shows error",
+              "ok": false,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 4,
+                      "parallelIndex": 0,
+                      "status": "failed",
+                      "duration": 20366,
+                      "error": {
+                        "message": "TimeoutError: locator.waitFor: Timeout 15000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"email\"]') to be visible\u001b[22m\n",
+                        "stack": "TimeoutError: locator.waitFor: Timeout 15000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"email\"]') to be visible\u001b[22m\n\n    at D:\\Desktop\\Final_Year_Project\\Final_Year_Project-master\\Frontend\\tests\\01-auth.spec.js:61:47",
+                        "location": {
+                          "file": "D:\\Desktop\\Final_Year_Project\\Final_Year_Project-master\\Frontend\\tests\\01-auth.spec.js",
+                          "column": 47,
+                          "line": 61
+                        },
+                        "snippet": "\u001b[0m \u001b[90m 59 |\u001b[39m   test(\u001b[32m'TC-AUTH-05 Non-existent account shows error'\u001b[39m\u001b[33m,\u001b[39m \u001b[36masync\u001b[39m ({ page }) \u001b[33m=>\u001b[39m {\n \u001b[90m 60 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mgoto(\u001b[32m'/login'\u001b[39m\u001b[33m,\u001b[39m { waitUntil\u001b[33m:\u001b[39m \u001b[32m'domcontentloaded'\u001b[39m })\u001b[33m;\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 61 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mlocator(\u001b[32m'input[name=\"email\"]'\u001b[39m)\u001b[33m.\u001b[39mwaitFor({ timeout\u001b[33m:\u001b[39m \u001b[35m15\u001b[39m_000 })\u001b[33m;\u001b[39m\n \u001b[90m    |\u001b[39m                                               \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 62 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mlocator(\u001b[32m'input[name=\"email\"]'\u001b[39m)\u001b[33m.\u001b[39mfill(\u001b[32m'doesnotexist_xyz@gmail.com'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m 63 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mlocator(\u001b[32m'input[name=\"password\"]'\u001b[39m)\u001b[33m.\u001b[39mfill(\u001b[32m'Pass@1234'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m 64 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mlocator(\u001b[32m'button[type=\"submit\"]'\u001b[39m)\u001b[33m.\u001b[39mclick()\u001b[33m;\u001b[39m\u001b[0m"
+                      },
+                      "errors": [
+                        {
+                          "location": {
+                            "file": "D:\\Desktop\\Final_Year_Project\\Final_Year_Project-master\\Frontend\\tests\\01-auth.spec.js",
+                            "column": 47,
+                            "line": 61
+                          },
+                          "message": "TimeoutError: locator.waitFor: Timeout 15000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"email\"]') to be visible\u001b[22m\n\n\n  59 |   test('TC-AUTH-05 Non-existent account shows error', async ({ page }) => {\n  60 |     await page.goto('/login', { waitUntil: 'domcontentloaded' });\n> 61 |     await page.locator('input[name=\"email\"]').waitFor({ timeout: 15_000 });\n     |                                               ^\n  62 |     await page.locator('input[name=\"email\"]').fill('doesnotexist_xyz@gmail.com');\n  63 |     await page.locator('input[name=\"password\"]').fill('Pass@1234');\n  64 |     await page.locator('button[type=\"submit\"]').click();\n    at D:\\Desktop\\Final_Year_Project\\Final_Year_Project-master\\Frontend\\tests\\01-auth.spec.js:61:47"
+                        }
+                      ],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-02-26T12:09:01.847Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "D:\\Desktop\\Final_Year_Project\\Final_Year_Project-master\\Frontend\\test-results\\01-auth-Authentication-TC--94fc5-xistent-account-shows-error-chromium\\test-failed-1.png"
+                        },
+                        {
+                          "name": "video",
+                          "contentType": "video/webm",
+                          "path": "D:\\Desktop\\Final_Year_Project\\Final_Year_Project-master\\Frontend\\test-results\\01-auth-Authentication-TC--94fc5-xistent-account-shows-error-chromium\\video.webm"
+                        },
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "D:\\Desktop\\Final_Year_Project\\Final_Year_Project-master\\Frontend\\test-results\\01-auth-Authentication-TC--94fc5-xistent-account-shows-error-chromium\\error-context.md"
+                        },
+                        {
+                          "name": "trace",
+                          "contentType": "application/zip",
+                          "path": "D:\\Desktop\\Final_Year_Project\\Final_Year_Project-master\\Frontend\\test-results\\01-auth-Authentication-TC--94fc5-xistent-account-shows-error-chromium\\trace.zip"
+                        }
+                      ],
+                      "errorLocation": {
+                        "file": "D:\\Desktop\\Final_Year_Project\\Final_Year_Project-master\\Frontend\\tests\\01-auth.spec.js",
+                        "column": 47,
+                        "line": 61
+                      }
+                    }
+                  ],
+                  "status": "unexpected"
+                }
+              ],
+              "id": "bfce37c7b15ae2ffafd1-d073412b847bb48abea9",
+              "file": "01-auth.spec.js",
+              "line": 59,
+              "column": 3
+            },
+            {
+              "title": "TC-AUTH-06 Logout navigates back to login",
+              "ok": false,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 5,
+                      "parallelIndex": 0,
+                      "status": "failed",
+                      "duration": 20506,
+                      "error": {
+                        "message": "TimeoutError: page.waitForSelector: Timeout 15000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"email\"]') to be visible\u001b[22m\n",
+                        "stack": "TimeoutError: page.waitForSelector: Timeout 15000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"email\"]') to be visible\u001b[22m\n\n    at login (D:\\Desktop\\Final_Year_Project\\Final_Year_Project-master\\Frontend\\tests\\helpers.js:35:14)\n    at D:\\Desktop\\Final_Year_Project\\Final_Year_Project-master\\Frontend\\tests\\01-auth.spec.js:71:5",
+                        "location": {
+                          "file": "D:\\Desktop\\Final_Year_Project\\Final_Year_Project-master\\Frontend\\tests\\helpers.js",
+                          "column": 14,
+                          "line": 35
+                        },
+                        "snippet": "\u001b[90m   at \u001b[39mhelpers.js:35\n\n\u001b[0m \u001b[90m 33 |\u001b[39m   \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mgoto(\u001b[32m'/login'\u001b[39m\u001b[33m,\u001b[39m { waitUntil\u001b[33m:\u001b[39m \u001b[32m'domcontentloaded'\u001b[39m })\u001b[33m;\u001b[39m\n \u001b[90m 34 |\u001b[39m   \u001b[90m// Wait for React to paint the login form\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 35 |\u001b[39m   \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mwaitForSelector(\u001b[32m'input[name=\"email\"]'\u001b[39m\u001b[33m,\u001b[39m { timeout\u001b[33m:\u001b[39m \u001b[35m15\u001b[39m_000 })\u001b[33m;\u001b[39m\n \u001b[90m    |\u001b[39m              \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 36 |\u001b[39m   \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mlocator(\u001b[32m'input[name=\"email\"]'\u001b[39m)\u001b[33m.\u001b[39mfill(user\u001b[33m.\u001b[39memail)\u001b[33m;\u001b[39m\n \u001b[90m 37 |\u001b[39m   \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mlocator(\u001b[32m'input[name=\"password\"]'\u001b[39m)\u001b[33m.\u001b[39mfill(user\u001b[33m.\u001b[39mpassword)\u001b[33m;\u001b[39m\n \u001b[90m 38 |\u001b[39m   \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mlocator(\u001b[32m'button[type=\"submit\"]'\u001b[39m)\u001b[33m.\u001b[39mclick()\u001b[33m;\u001b[39m\u001b[0m"
+                      },
+                      "errors": [
+                        {
+                          "location": {
+                            "file": "D:\\Desktop\\Final_Year_Project\\Final_Year_Project-master\\Frontend\\tests\\helpers.js",
+                            "column": 14,
+                            "line": 35
+                          },
+                          "message": "TimeoutError: page.waitForSelector: Timeout 15000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"email\"]') to be visible\u001b[22m\n\n\n   at helpers.js:35\n\n  33 |   await page.goto('/login', { waitUntil: 'domcontentloaded' });\n  34 |   // Wait for React to paint the login form\n> 35 |   await page.waitForSelector('input[name=\"email\"]', { timeout: 15_000 });\n     |              ^\n  36 |   await page.locator('input[name=\"email\"]').fill(user.email);\n  37 |   await page.locator('input[name=\"password\"]').fill(user.password);\n  38 |   await page.locator('button[type=\"submit\"]').click();\n    at login (D:\\Desktop\\Final_Year_Project\\Final_Year_Project-master\\Frontend\\tests\\helpers.js:35:14)\n    at D:\\Desktop\\Final_Year_Project\\Final_Year_Project-master\\Frontend\\tests\\01-auth.spec.js:71:5"
+                        }
+                      ],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-02-26T12:09:33.598Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "D:\\Desktop\\Final_Year_Project\\Final_Year_Project-master\\Frontend\\test-results\\01-auth-Authentication-TC--97d45-out-navigates-back-to-login-chromium\\test-failed-1.png"
+                        },
+                        {
+                          "name": "video",
+                          "contentType": "video/webm",
+                          "path": "D:\\Desktop\\Final_Year_Project\\Final_Year_Project-master\\Frontend\\test-results\\01-auth-Authentication-TC--97d45-out-navigates-back-to-login-chromium\\video.webm"
+                        },
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "D:\\Desktop\\Final_Year_Project\\Final_Year_Project-master\\Frontend\\test-results\\01-auth-Authentication-TC--97d45-out-navigates-back-to-login-chromium\\error-context.md"
+                        },
+                        {
+                          "name": "trace",
+                          "contentType": "application/zip",
+                          "path": "D:\\Desktop\\Final_Year_Project\\Final_Year_Project-master\\Frontend\\test-results\\01-auth-Authentication-TC--97d45-out-navigates-back-to-login-chromium\\trace.zip"
+                        }
+                      ],
+                      "errorLocation": {
+                        "file": "D:\\Desktop\\Final_Year_Project\\Final_Year_Project-master\\Frontend\\tests\\helpers.js",
+                        "column": 14,
+                        "line": 35
+                      }
+                    }
+                  ],
+                  "status": "unexpected"
+                }
+              ],
+              "id": "bfce37c7b15ae2ffafd1-1e85aa8431cfd95ec80e",
+              "file": "01-auth.spec.js",
+              "line": 70,
+              "column": 3
+            },
+            {
+              "title": "TC-AUTH-07 Session persists after page reload",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 6,
+                      "parallelIndex": 0,
+                      "status": "interrupted",
+                      "duration": 9316,
+                      "error": {
+                        "message": "Error: page.waitForSelector: Target page, context or browser has been closed\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"email\"]') to be visible\u001b[22m\n",
+                        "stack": "Error: page.waitForSelector: Target page, context or browser has been closed\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"email\"]') to be visible\u001b[22m\n\n    at login (D:\\Desktop\\Final_Year_Project\\Final_Year_Project-master\\Frontend\\tests\\helpers.js:35:14)\n    at D:\\Desktop\\Final_Year_Project\\Final_Year_Project-master\\Frontend\\tests\\01-auth.spec.js:78:5",
+                        "location": {
+                          "file": "D:\\Desktop\\Final_Year_Project\\Final_Year_Project-master\\Frontend\\tests\\helpers.js",
+                          "column": 14,
+                          "line": 35
+                        },
+                        "snippet": "\u001b[90m   at \u001b[39mhelpers.js:35\n\n\u001b[0m \u001b[90m 33 |\u001b[39m   \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mgoto(\u001b[32m'/login'\u001b[39m\u001b[33m,\u001b[39m { waitUntil\u001b[33m:\u001b[39m \u001b[32m'domcontentloaded'\u001b[39m })\u001b[33m;\u001b[39m\n \u001b[90m 34 |\u001b[39m   \u001b[90m// Wait for React to paint the login form\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 35 |\u001b[39m   \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mwaitForSelector(\u001b[32m'input[name=\"email\"]'\u001b[39m\u001b[33m,\u001b[39m { timeout\u001b[33m:\u001b[39m \u001b[35m15\u001b[39m_000 })\u001b[33m;\u001b[39m\n \u001b[90m    |\u001b[39m              \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 36 |\u001b[39m   \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mlocator(\u001b[32m'input[name=\"email\"]'\u001b[39m)\u001b[33m.\u001b[39mfill(user\u001b[33m.\u001b[39memail)\u001b[33m;\u001b[39m\n \u001b[90m 37 |\u001b[39m   \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mlocator(\u001b[32m'input[name=\"password\"]'\u001b[39m)\u001b[33m.\u001b[39mfill(user\u001b[33m.\u001b[39mpassword)\u001b[33m;\u001b[39m\n \u001b[90m 38 |\u001b[39m   \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mlocator(\u001b[32m'button[type=\"submit\"]'\u001b[39m)\u001b[33m.\u001b[39mclick()\u001b[33m;\u001b[39m\u001b[0m"
+                      },
+                      "errors": [
+                        {
+                          "location": {
+                            "file": "D:\\Desktop\\Final_Year_Project\\Final_Year_Project-master\\Frontend\\tests\\helpers.js",
+                            "column": 14,
+                            "line": 35
+                          },
+                          "message": "Error: page.waitForSelector: Target page, context or browser has been closed\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"email\"]') to be visible\u001b[22m\n\n\n   at helpers.js:35\n\n  33 |   await page.goto('/login', { waitUntil: 'domcontentloaded' });\n  34 |   // Wait for React to paint the login form\n> 35 |   await page.waitForSelector('input[name=\"email\"]', { timeout: 15_000 });\n     |              ^\n  36 |   await page.locator('input[name=\"email\"]').fill(user.email);\n  37 |   await page.locator('input[name=\"password\"]').fill(user.password);\n  38 |   await page.locator('button[type=\"submit\"]').click();\n    at login (D:\\Desktop\\Final_Year_Project\\Final_Year_Project-master\\Frontend\\tests\\helpers.js:35:14)\n    at D:\\Desktop\\Final_Year_Project\\Final_Year_Project-master\\Frontend\\tests\\01-auth.spec.js:78:5"
+                        }
+                      ],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-02-26T12:10:00.703Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "trace",
+                          "contentType": "application/zip",
+                          "path": "D:\\Desktop\\Final_Year_Project\\Final_Year_Project-master\\Frontend\\test-results\\01-auth-Authentication-TC--9f022--persists-after-page-reload-chromium\\trace.zip"
+                        }
+                      ],
+                      "errorLocation": {
+                        "file": "D:\\Desktop\\Final_Year_Project\\Final_Year_Project-master\\Frontend\\tests\\helpers.js",
+                        "column": 14,
+                        "line": 35
+                      }
+                    }
+                  ],
+                  "status": "skipped"
+                }
+              ],
+              "id": "bfce37c7b15ae2ffafd1-ca8ba81b6dcc80b2cf20",
+              "file": "01-auth.spec.js",
+              "line": 77,
+              "column": 3
+            },
+            {
+              "title": "TC-AUTH-08 Unauthenticated access to /dashboard",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "bfce37c7b15ae2ffafd1-fd22bd7515c7920ceb23",
+              "file": "01-auth.spec.js",
+              "line": 86,
+              "column": 3
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-02-26T12:06:48.013Z",
+    "duration": 203472.047,
+    "expected": 0,
+    "skipped": 2,
+    "unexpected": 6,
+    "flaky": 0
+  }
+}
