@@ -133,7 +133,7 @@ const FloatingChatbot = () => {
     await executeRideSearch({
       ...details,
       destination: details.destination,
-      date: details.date || todayISO(),
+      date: details.date || null,
       time: details.time || null,
     });
   };
@@ -710,6 +710,19 @@ const FloatingChatbot = () => {
     const { conversationState, postData } = agentState;
     const low = text.toLowerCase().trim();
 
+    // Allow user to escape the post wizard at any step by typing cancel/stop/quit/no
+    if (/^(cancel|stop|quit|abort|exit|back|no thanks)\b/i.test(low)) {
+      replaceBotThinking("👍 Ride posting cancelled. What else would you like to do?",
+        { quickActions: [
+          { label: '🔍 Find Rides', action: 'find_ride' },
+          { label: '📝 Post Ride', action: 'post_ride' },
+          { label: '📊 My Rides', action: 'my_rides' },
+        ]}
+      );
+      resetFlow();
+      return true;
+    }
+
     switch (conversationState) {
       case STATES.POST_DEST: {
         const dest = text.trim();
@@ -847,8 +860,10 @@ const FloatingChatbot = () => {
         if (ride) {
           try {
             const res = await createOrGetPrivateChat(db, auth, ride);
-            if (res.ok && res.chatId) navigate(`/privatechat/${res.chatId}`);
-            else addBotMsg(`❌ ${res.message || 'Could not open chat.'}`);
+            if (res.ok && res.chatId) {
+              setIsOpen(false);
+              navigate(`/privatechat/${res.chatId}`);
+            } else addBotMsg(`❌ ${res.message || 'Could not open chat.'}`);
           } catch (e) { addBotMsg(`❌ ${e.message}`); }
         }
         break;
@@ -880,6 +895,21 @@ const FloatingChatbot = () => {
     try {
       const { conversationState } = agentState;
       let detectedIntent = { intent: INTENTS.UNKNOWN };
+
+      // Quick auth-status shortcut — "am I logged in?", "who am I?", etc.
+      if (/\bam\s+i\s+(logged|signed)\s+in\b|\bwho\s+am\s+i\b|\bmy\s+account\b/i.test(text)) {
+        const name = getUserName();
+        replaceBotThinking(
+          `✅ Yes, you're **logged in** as **${name}**! How can I help you today?`,
+          { quickActions: [
+            { label: '🔍 Find Rides', action: 'find_ride' },
+            { label: '📝 Post Ride', action: 'post_ride' },
+            { label: '📊 My Rides', action: 'my_rides' },
+          ]}
+        );
+        setIsLoading(false);
+        return;
+      }
 
       // Pre-check for strong commands that should interrupt flows
       // Only check if we are in an interactive flow (not idle)

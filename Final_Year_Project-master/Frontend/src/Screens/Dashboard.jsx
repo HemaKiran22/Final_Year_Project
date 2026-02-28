@@ -923,9 +923,9 @@ const Dashboard = () => {
     const passengers = Array.isArray(ride.passengers) ? ride.passengers : [];
     const pIds = getParticipantIds(ride);
     const totalSeats = Number(ride.totalSeats || ride.seats) || 1;
-    const availableSeats = ride.availableSeats != null ? Number(ride.availableSeats) : (totalSeats - pIds.length);
+    const availableSeats = ride.availableSeats != null ? Number(ride.availableSeats) : (totalSeats - passengers.length);
     const costPerPerson = totalSeats > 0 ? (Number(ride.price) || 0) / totalSeats : 0;
-    const seatsFilled = pIds.length;
+    const seatsFilled = totalSeats - availableSeats;
     const rideStatus = getRideStatus(ride);
     const isCreator = (ride.createdBy || ride.driverId) === userId;
     const isCoRider = !isCreator && (passengers.includes(userId) || pIds.includes(userId));
@@ -953,8 +953,8 @@ const Dashboard = () => {
           <div className="route-dot"></div>
           <div className="route-line"></div>
           <div className="route-dot end"></div>
-              <div className="route-info" aria-label={`Route from Christ University to ${ride.destination}`}>
-                <div className="route-from"><span className="route-label from">From</span> Christ University</div>
+              <div className="route-info" aria-label={`Route from Brigade to ${ride.destination}`}>
+                <div className="route-from"><span className="route-label from">From</span> Brigade</div>
                 <div className="route-to"><span className="route-label to">To</span> {ride.destination}</div>
               </div>
         </div>
@@ -1057,7 +1057,7 @@ const Dashboard = () => {
             Private Chat
           </button>
         )}
-        {rideStatus !== 'cancelled' && (
+        {rideStatus !== 'cancelled' && passengers.filter(id => id !== ride.driverId).length > 0 && (
         <button 
           className="btn btn-secondary"
           onClick={() => navigate(`/groupchat/${ride.id}`)}
@@ -1466,8 +1466,8 @@ const Dashboard = () => {
                           <div className="route-dot"></div>
                           <div className="route-line"></div>
                           <div className="route-dot end"></div>
-                          <div className="route-info" aria-label={`Route from ${ride.from || 'Christ University'} to ${ride.destination}`}>
-                            <div className="route-from"><span className="route-label from">From</span> {ride.from || 'Christ University'}</div>
+                          <div className="route-info" aria-label={`Route from ${ride.from || 'Brigade'} to ${ride.destination}`}>
+                            <div className="route-from"><span className="route-label from">From</span> {ride.from || 'Brigade'}</div>
                             <div className="route-to"><span className="route-label to">To</span> {ride.destination}</div>
                           </div>
                         </div>
@@ -1711,7 +1711,7 @@ const Dashboard = () => {
             <form onSubmit={handlePostRide}>
               <div className="form-group">
                 <label>From:</label>
-                <input type="text" name="from" value='Christ University' readOnly />
+                <input type="text" name="from" value='Brigade' readOnly />
               </div>
               <div className="form-group">
                 <label>Destination:</label>
@@ -1968,7 +1968,7 @@ const Dashboard = () => {
                             <div className="route-line"></div>
                             <div className="route-dot end"></div>
                             <div className="route-info">
-                              <div className="route-from"><span className="route-label from">From</span> {ride.from || 'Christ University'}</div>
+                              <div className="route-from"><span className="route-label from">From</span> {ride.from || 'Brigade'}</div>
                               <div className="route-to"><span className="route-label to">To</span> {ride.destination}</div>
                             </div>
                           </div>

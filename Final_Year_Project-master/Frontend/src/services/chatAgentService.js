@@ -34,6 +34,16 @@ const INTENTS = {
 };
 
 const intentPatterns = [
+  // MY_RIDES first so "show ride history" doesn't fall into FIND_RIDE
+  { intent: INTENTS.MY_RIDES, patterns: [
+    /\bmy\s+rides/i,
+    /\bshow\s*(my|all)?\s*rides/i,
+    /\blist\s*my\s*rides/i,
+    /\bride\s*(history|records?|log)\b/i,
+    /\bhistory\s+of\s+(my\s+)?rides?/i,
+    /\bmy\s+(past|previous|completed|old)\s+rides?/i,
+    /\bshow\s+(my\s+)?(past|previous|ride\s+history)/i,
+  ]},
   { intent: INTENTS.FIND_RIDE, patterns: [
     /\b(find|search|show|look\s*for|get|any|available)\b.*\bride/i,
     /\brides?\s+(to|towards|going|heading|near)\b/i,
@@ -92,11 +102,6 @@ const intentPatterns = [
     /\bstatus\s+of\s+(my\s+)?ride/i,
     /\bmy\s+ride\s+(status|info|details)/i,
     /\bis\s+(this|the)\s+ride\s+(safe|full|open)/i,
-  ]},
-  { intent: INTENTS.MY_RIDES, patterns: [
-    /\bmy\s+rides/i,
-    /\bshow\s*(my|all)?\s*rides/i,
-    /\blist\s*my\s*rides/i,
   ]},
   { intent: INTENTS.GREETING, patterns: [
     /^(hi|hello|hey|hai|hii|yo|sup|good\s*(morning|afternoon|evening))[.!]?$/i,

@@ -14,11 +14,10 @@ export async function searchRidesByQuery(db, q) {
   // q: { destination, dateISO, time24, timeWindowMinutes, minDriverRating }
   // Strategy: fetch Pending rides and filter client-side for destination/date/time/seats
   const ridesRef = collection(db, 'rides');
-  // Fetch both Pending and Forming rides to cover shared groups
-  const pendingQ = query(ridesRef, where('status', '==', 'Pending'));
-  const formingQ = query(ridesRef, where('status', '==', 'Forming'));
-  const [snapPending, snapForming] = await Promise.all([getDocs(pendingQ), getDocs(formingQ)]);
-  const all = [...snapPending.docs, ...snapForming.docs].map(d => ({ id: d.id, ...d.data() }));
+  // Fetch all rides and filter client-side (mirrors Dashboard behaviour —
+  // avoids missing rides whose status field uses a different naming convention).
+  const snapAll = await getDocs(ridesRef);
+  const all = snapAll.docs.map(d => ({ id: d.id, ...d.data() }));
 
   const destLower = (q.destination || '').toLowerCase();
   const destTokens = destLower

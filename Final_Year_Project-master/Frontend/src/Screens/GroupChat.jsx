@@ -200,38 +200,44 @@ export default function GroupChat() {
           <small>{ride?.date} at {ride?.time} • {membersCount.accepted}/{membersCount.total} accepted</small>
         </div>
         <div>
-          {ride && (!Array.isArray(ride.acceptedBy) || !ride.acceptedBy.includes(user?.uid)) && (
-            <button className="accept-button" onClick={acceptRide}>Accept</button>
-          )}
-          {ride?.status === 'Accepted' && (
-            <span className="status-chip" style={{ marginLeft: 8 }}>All Accepted</span>
-          )}
-          {ride?.status === 'Accepted' && (
-            <button className="accept-button" style={{ marginLeft: 8 }} onClick={async () => {
-              try {
-                const rideRef = doc(db, 'rides', rideId);
-                const snap = await getDoc(rideRef);
-                if (!snap.exists()) return navigate('/dashboard');
-                const data = snap.data();
-                const completedBy = Array.isArray(data.completedBy) ? data.completedBy : [];
-                if (!completedBy.includes(user.uid)) {
-                  await updateDoc(rideRef, { completedBy: arrayUnion(user.uid) });
-                }
-                // If all members completed, set status Completed
-                const allMembers = new Set([
-                  ...(Array.isArray(data.passengers) ? data.passengers : []),
-                  ...(data.driverId ? [data.driverId] : []),
-                ]);
-                const newCompleted = new Set([...completedBy, user.uid]);
-                if (allMembers.size > 0 && allMembers.size === newCompleted.size) {
-                  await updateDoc(rideRef, { status: 'Completed' });
-                }
-                navigate('/dashboard');
-              } catch (err) {
-                console.error('Failed to complete ride', err);
-                navigate('/dashboard');
-              }
-            }}>Ride Completed & Finish</button>
+          {ride?.isCompleted || ride?.status === 'Completed' || ride?.rideStatus === 'completed' ? (
+            <span className="status-chip" style={{ marginLeft: 8 }}>✅ Ride Completed</span>
+          ) : (
+            <>
+              {ride && (!Array.isArray(ride.acceptedBy) || !ride.acceptedBy.includes(user?.uid)) && (
+                <button className="accept-button" onClick={acceptRide}>Accept</button>
+              )}
+              {ride?.status === 'Accepted' && (
+                <span className="status-chip" style={{ marginLeft: 8 }}>All Accepted</span>
+              )}
+              {ride?.status === 'Accepted' && (
+                <button className="accept-button" style={{ marginLeft: 8 }} onClick={async () => {
+                  try {
+                    const rideRef = doc(db, 'rides', rideId);
+                    const snap = await getDoc(rideRef);
+                    if (!snap.exists()) return navigate('/dashboard');
+                    const data = snap.data();
+                    const completedBy = Array.isArray(data.completedBy) ? data.completedBy : [];
+                    if (!completedBy.includes(user.uid)) {
+                      await updateDoc(rideRef, { completedBy: arrayUnion(user.uid) });
+                    }
+                    // If all members completed, set status Completed
+                    const allMembers = new Set([
+                      ...(Array.isArray(data.passengers) ? data.passengers : []),
+                      ...(data.driverId ? [data.driverId] : []),
+                    ]);
+                    const newCompleted = new Set([...completedBy, user.uid]);
+                    if (allMembers.size > 0 && allMembers.size === newCompleted.size) {
+                      await updateDoc(rideRef, { status: 'Completed' });
+                    }
+                    navigate('/dashboard');
+                  } catch (err) {
+                    console.error('Failed to complete ride', err);
+                    navigate('/dashboard');
+                  }
+                }}>Ride Completed & Finish</button>
+              )}
+            </>
           )}
         </div>
       </div>

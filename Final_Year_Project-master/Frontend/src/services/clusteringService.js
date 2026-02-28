@@ -285,11 +285,11 @@ export async function getClusteredRideGroups(db, currentUserId, opts = {}) {
   }
 
   try {
-    // 1. Fetch all open rides
+    // 1. Fetch all rides and filter client-side (mirrors Dashboard — avoids
+    //    missing rides whose status field uses a different naming convention)
     const ridesRef = collection(db, 'rides');
-    const pendingQ = query(ridesRef, where('status', '==', 'Pending'));
-    const [snapPending] = await Promise.all([getDocs(pendingQ)]);
-    let rides = snapPending.docs.map(d => ({ id: d.id, ...d.data() }));
+    const snapAll = await getDocs(ridesRef);
+    let rides = snapAll.docs.map(d => ({ id: d.id, ...d.data() }));
 
     // Filter to only open rides with available seats, future dates
     const now = new Date();

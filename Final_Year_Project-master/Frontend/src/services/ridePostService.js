@@ -97,7 +97,7 @@ export async function createRideFromPrompt(db, auth, text, userName) {
 
   try {
     const docRef = await addDoc(collection(db, 'rides'), {
-      from: 'Christ University',
+      from: 'Brigade',
       destination,
       date,
       time,

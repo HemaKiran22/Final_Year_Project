@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, useLocation } from 'react-router-dom';
 import LandingPage from './Screens/LandingPage';
 import Signup from './Screens/Signup';
 import Login from './Screens/Login';
@@ -114,6 +114,7 @@ function NotificationListener() {
 }
 
 function App() {
+  const location = useLocation();
   return (
     <>
       <Routes>
@@ -132,7 +133,7 @@ function App() {
         <Route path="/groupchat/:rideId" element={<GroupChat />} />
       </Routes>
       <NotificationListener />
-      <FloatingChatbot />
+      {location.pathname === '/dashboard' && <FloatingChatbot />}
     </>
   );
 }

@@ -333,7 +333,9 @@ const PrivateChat = () => {
 
       {ride && (
         <div className="chat-actions">
-          {!chatMeta?.acceptedBy?.includes(auth.currentUser?.uid) ? (
+          {ride?.isCompleted || ride?.rideStatus === 'completed' ? (
+            <span className="ride-confirmed" style={{ padding: '10px 16px', fontSize: '0.95rem' }}>✅ Ride Completed</span>
+          ) : !chatMeta?.acceptedBy?.includes(auth.currentUser?.uid) ? (
             <button disabled={accepting} onClick={acceptRide} className="accept-btn">
               {accepting ? 'Accepting...' : '✅ Accept Ride'}
             </button>
