@@ -893,10 +893,56 @@ const Dashboard = () => {
   /* ── No-show marking (Scenario 5) ── */
   const [showNoShowModal, setShowNoShowModal] = useState(false);
   const [noShowRide, setNoShowRide] = useState(null);
+  const [noShowNameMap, setNoShowNameMap] = useState({});
 
-  const handleOpenNoShowModal = (ride) => {
+  const fetchParticipantNames = async (ride) => {
+    if (!ride) return;
+    const ids = getParticipantIds(ride)
+      .filter(uid => uid && uid !== userId);
+    if (!ids.length) return;
+
+    try {
+      const entries = {};
+      await Promise.all(ids.map(async (uid) => {
+        if (noShowNameMap[uid]) {
+          entries[uid] = noShowNameMap[uid];
+          return;
+        }
+        try {
+          const snap = await getDoc(doc(db, 'users', uid));
+          if (snap.exists()) {
+            const data = snap.data();
+            entries[uid] = data.displayName || data.name || data.profileName || data.fullName || (data.email ? data.email.split('@')[0] : uid);
+          } else {
+            entries[uid] = uid;
+          }
+        } catch {
+          entries[uid] = uid;
+        }
+      }));
+      if (Object.keys(entries).length) {
+        setNoShowNameMap(prev => ({ ...prev, ...entries }));
+      }
+    } catch (err) {
+      console.error('Failed to preload co-rider names', err);
+    }
+  };
+
+  const getParticipantLabel = (ride, uid) => {
+    if (!uid) return 'Unknown user';
+    if (noShowNameMap[uid]) return noShowNameMap[uid];
+    const raw = Array.isArray(ride?.participants) ? ride.participants : [];
+    const richEntry = raw.length > 0 ? raw.find(p => typeof p === 'object' && p.userId === uid && (p.name || p.displayName)) : null;
+    if (richEntry) return richEntry.name || richEntry.displayName;
+    if (ride?.passengerNames && ride.passengerNames[uid]) return ride.passengerNames[uid];
+    if (ride?.passengerProfiles && ride.passengerProfiles[uid]?.name) return ride.passengerProfiles[uid].name;
+    return `User ${uid.slice(0, 8)}…`;
+  };
+
+  const handleOpenNoShowModal = async (ride) => {
     setNoShowRide(ride);
     setShowNoShowModal(true);
+    fetchParticipantNames(ride);
   };
 
   const handleMarkNoShow = async (targetUserId) => {
@@ -1800,7 +1846,7 @@ const Dashboard = () => {
                     onMouseEnter={e => { e.currentTarget.style.background = '#fef2f2'; e.currentTarget.style.borderColor = '#ef4444'; }}
                     onMouseLeave={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.borderColor = '#e5e7eb'; }}
                   >
-                    👤 User: {uid.slice(0, 8)}…
+                    👤 {getParticipantLabel(noShowRide, uid)}
                   </button>
                 ))}
               {getParticipantIds(noShowRide).filter(uid => uid !== userId).length === 0 && (

@@ -1,22 +1,4 @@
-/**
- * ═══════════════════════════════════════════════════════════════
- *  AI-Powered Ride Recommendation Service
- * ═══════════════════════════════════════════════════════════════
- *
- * Analyses user search inputs (destination, preferred time, location,
- * trust-score preference) and ranks available rides using weighted
- * multi-factor scoring:
- *
- *   1. Destination similarity   (fuzzy + token match)
- *   2. Time proximity           (configurable window)
- *   3. Creator reliability score
- *   4. Seat availability ratio
- *
- * Returns rides sorted by composite score with the top ones
- * flagged as "Recommended for You".
- *
- * SUGGESTION-ONLY — no auto-join, no auto-clustering.
- */
+
 
 import { doc, getDoc } from 'firebase/firestore';
 import { resolveRideStatus, getParticipantIds } from './rideActionService';
@@ -126,22 +108,7 @@ function seatScore(ride) {
   return Math.round(Math.min(100, (available / totalSeats) * 100));
 }
 
-/* ═══════════════════════════════════════════════════════════════
- *  Main recommendation engine
- * ═══════════════════════════════════════════════════════════════
- *
- *  @param db            – Firestore instance
- *  @param allRides      – array of ride objects already loaded
- *  @param userPrefs     – {
- *      destination: string,         — user's search destination
- *      time24: string|null,         — preferred time (HH:MM 24h)
- *      timeWindowMin: number,       — minutes tolerance (default 60)
- *      minReliability: number|null, — minimum creator reliability (0-100)
- *      userId: string,              — current user id (exclude own rides)
- *      community: string|null,      — optional community filter
- *  }
- *  @returns Promise<Array<{ride, compositeScore, factors, recommended}>>
- */
+
 export async function getRecommendedRides(db, allRides, userPrefs = {}) {
   const {
     destination = '',
@@ -219,10 +186,6 @@ export async function getRecommendedRides(db, allRides, userPrefs = {}) {
   return results.slice(0, MAX_RESULTS);
 }
 
-/* ═══════════════════════════════════════════════════════════════
- *  Quick helper: run recommendation using just destination text
- *  (for the dashboard suggested-rides section)
- * ═══════════════════════════════════════════════════════════════ */
 
 export async function getQuickRecommendations(db, allRides, { userId, community, recentDestinations = [] }) {
   // If user has recent destinations, recommend rides to those places

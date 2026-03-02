@@ -1,5 +1,5 @@
 import { addDoc, collection } from 'firebase/firestore';
-import { parseRideQuery } from './nlpAgent';
+import { parseRideQuery } from './unifiedAgent';
 
 function yyyyMmDd(date) {
   const y = date.getFullYear();
