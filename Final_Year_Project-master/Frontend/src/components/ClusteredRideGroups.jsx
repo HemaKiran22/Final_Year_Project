@@ -18,6 +18,7 @@ const ClusteredRideGroups = ({ db, userId, userName, community, allRides, onJoin
     } catch { return new Set(); }
   });
   const [joiningId, setJoiningId] = useState(null);
+  const [joinedRideIds, setJoinedRideIds] = useState(new Set());
   const [showSection, setShowSection] = useState(true);
 
   /* ── Fetch clusters ── */
@@ -198,6 +199,7 @@ const ClusteredRideGroups = ({ db, userId, userName, community, allRides, onJoin
                           const memberRide = (cluster.existingRides || []).find(r => r.id === m.rideId);
                           const canJoin = memberRide && m.userId !== userId && !alreadyInCluster;
                           const isJoiningThis = joiningId === m.rideId;
+                          const hasJoined = joinedRideIds.has(m.rideId);
                           return (
                             <div key={i} className={`crg-member ${m.userId === userId ? 'crg-member-self' : ''}`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
                               <div style={{ flex: 1 }}>
@@ -213,11 +215,11 @@ const ClusteredRideGroups = ({ db, userId, userName, community, allRides, onJoin
                                   )}
                                 </div>
                               </div>
-                              {canJoin && (
+                              {(canJoin || hasJoined) && (
                                 <button
                                   className="crg-btn crg-btn-join"
-                                  style={{ padding: '6px 14px', fontSize: '13px', whiteSpace: 'nowrap' }}
-                                  disabled={isJoiningThis}
+                                  style={{ padding: '6px 14px', fontSize: '13px', whiteSpace: 'nowrap', background: hasJoined ? '#10b981' : undefined, cursor: hasJoined ? 'default' : undefined }}
+                                  disabled={isJoiningThis || hasJoined}
                                   onClick={async () => {
                                     setJoiningId(m.rideId);
                                     try {
@@ -227,6 +229,7 @@ const ClusteredRideGroups = ({ db, userId, userName, community, allRides, onJoin
                                         await joinRideById(db, memberRide, userId, userName || 'Rider');
                                         notify.success(`Joined ${m.userName}'s ride to ${m.destination}!`);
                                       }
+                                      setJoinedRideIds(prev => new Set([...prev, m.rideId]));
                                       invalidateClusterCache();
                                       loadClusters();
                                     } catch (err) {
@@ -235,7 +238,7 @@ const ClusteredRideGroups = ({ db, userId, userName, community, allRides, onJoin
                                     setJoiningId(null);
                                   }}
                                 >
-                                  {isJoiningThis ? 'Joining…' : 'Join'}
+                                  {hasJoined ? '✓ Joined' : isJoiningThis ? 'Joining…' : 'Join'}
                                 </button>
                               )}
                             </div>
