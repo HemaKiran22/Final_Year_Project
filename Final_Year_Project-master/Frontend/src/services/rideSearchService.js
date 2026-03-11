@@ -103,14 +103,20 @@ export async function searchRidesByQuery(db, q) {
       if (available <= 0) return false;
       return true; // include rides even if time is missing; we'll sort with missing times last
     });
-    relaxed.sort((a, b) => {
+    // Only include relaxed rides within 2 hours of the requested time
+    const maxRelaxedWindow = 120;
+    const timedRelaxed = relaxed.filter(r => {
+      if (!r.time) return true; // no time stored → include
+      return Math.abs(toMinutes(r.time) - targetMinutes) <= maxRelaxedWindow;
+    });
+    timedRelaxed.sort((a, b) => {
       const aHas = Boolean(a.time);
       const bHas = Boolean(b.time);
       const adiff = aHas ? Math.abs(toMinutes(a.time) - targetMinutes) : Number.POSITIVE_INFINITY;
       const bdiff = bHas ? Math.abs(toMinutes(b.time) - targetMinutes) : Number.POSITIVE_INFINITY;
       return adiff - bdiff;
     });
-    candidates = relaxed.slice(0, 5);
+    candidates = timedRelaxed.slice(0, 5);
   }
 
   // Sort by time proximity if time provided, otherwise soonest

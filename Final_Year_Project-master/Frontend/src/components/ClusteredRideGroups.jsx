@@ -26,7 +26,10 @@ const ClusteredRideGroups = ({ db, userId, userName, community, allRides, onJoin
     setLoading(true);
     try {
       const result = await getClusteredRideGroups(db, userId, { community });
-      setClusters(result.filter(c => !ignored.has(c.clusterId)));
+      const filtered = result.filter(c => !ignored.has(c.clusterId));
+      setClusters(filtered);
+      // auto-expand all clusters so Join buttons are visible immediately
+      setExpanded(Object.fromEntries(filtered.map(c => [c.clusterId, true])));
     } catch (err) {
       console.error('ClusteredRideGroups: fetch error', err);
     }
@@ -191,35 +194,58 @@ const ClusteredRideGroups = ({ db, userId, userName, community, allRides, onJoin
 
                     {isExpanded && (
                       <div className="crg-members">
-                        {cluster.suggestedMembers.map((m, i) => (
-                          <div key={i} className={`crg-member ${m.userId === userId ? 'crg-member-self' : ''}`}>
-                            <div className="crg-member-name">
-                              {m.userName} {m.userId === userId && <span className="crg-you-tag">You</span>}
-                            </div>
-                            <div className="crg-member-details">
-                              <span>{m.destination}</span>
-                              <span>{m.time || 'Flexible'}</span>
-                              {reliabilityBadge(m.reliabilityScore)}
-                              {m.averageRating && (
-                                <span className="crg-member-rating"><FaStar style={{ color: '#f59e0b', marginRight: '2px' }} />{Number(m.averageRating).toFixed(1)}</span>
+                        {cluster.suggestedMembers.map((m, i) => {
+                          const memberRide = (cluster.existingRides || []).find(r => r.id === m.rideId);
+                          const canJoin = memberRide && m.userId !== userId && !alreadyInCluster;
+                          const isJoiningThis = joiningId === m.rideId;
+                          return (
+                            <div key={i} className={`crg-member ${m.userId === userId ? 'crg-member-self' : ''}`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
+                              <div style={{ flex: 1 }}>
+                                <div className="crg-member-name">
+                                  {m.userName} {m.userId === userId && <span className="crg-you-tag">You</span>}
+                                </div>
+                                <div className="crg-member-details">
+                                  <span>{m.destination}</span>
+                                  <span>{m.time || 'Flexible'}</span>
+                                  {reliabilityBadge(m.reliabilityScore)}
+                                  {m.averageRating && (
+                                    <span className="crg-member-rating"><FaStar style={{ color: '#f59e0b', marginRight: '2px' }} />{Number(m.averageRating).toFixed(1)}</span>
+                                  )}
+                                </div>
+                              </div>
+                              {canJoin && (
+                                <button
+                                  className="crg-btn crg-btn-join"
+                                  style={{ padding: '6px 14px', fontSize: '13px', whiteSpace: 'nowrap' }}
+                                  disabled={isJoiningThis}
+                                  onClick={async () => {
+                                    setJoiningId(m.rideId);
+                                    try {
+                                      if (onJoinRide) {
+                                        await onJoinRide(memberRide);
+                                      } else {
+                                        await joinRideById(db, memberRide, userId, userName || 'Rider');
+                                        notify.success(`Joined ${m.userName}'s ride to ${m.destination}!`);
+                                      }
+                                      invalidateClusterCache();
+                                      loadClusters();
+                                    } catch (err) {
+                                      notify.error(err.message || 'Failed to join ride.');
+                                    }
+                                    setJoiningId(null);
+                                  }}
+                                >
+                                  {isJoiningThis ? 'Joining…' : 'Join'}
+                                </button>
                               )}
                             </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     )}
 
                     {/* Actions */}
                     <div className="crg-actions">
-                      {hasJoinable && !alreadyInCluster && (
-                        <button
-                          className="crg-btn crg-btn-join"
-                          disabled={isJoining}
-                          onClick={() => handleJoinBestRide(cluster)}
-                        >
-                          {isJoining ? 'Joining…' : '✓ Join Group'}
-                        </button>
-                      )}
                       {alreadyInCluster && (
                         <span className="crg-already-in">
                           <FaCheckCircle /> You're in this group

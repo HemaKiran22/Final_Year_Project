@@ -81,7 +81,9 @@
   margin: 0 auto 50px;
 }
 .about-section-badge {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
   background: linear-gradient(135deg, #ede9fe, #ddd6fe);
   color: #7c3aed;
   font-size: 0.82rem;
@@ -89,6 +91,10 @@
   padding: 6px 18px;
   border-radius: 50px;
   margin-bottom: 16px;
+}
+.about-badge-icon {
+  font-size: 0.9rem;
+  flex-shrink: 0;
 }
 .about-section-header h2 {
   font-size: 2.4rem;
@@ -167,7 +173,9 @@
   max-width: 560px;
 }
 .about-hero-badge {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
   background: #ede9fe;
   color: #7c3aed;
   font-weight: 700;
@@ -213,7 +221,7 @@
 .about-hero-card:hover {
   transform: translateY(-6px);
 }
-.ahc-icon { font-size: 2.2rem; margin-bottom: 10px; }
+.ahc-icon { font-size: 1.8rem; margin-bottom: 10px; color: #7c3aed; display: flex; align-items: center; justify-content: center; }
 .ahc-stat { font-size: 1.6rem; font-weight: 900; color: #8b5cf6; }
 .ahc-label { font-size: 0.82rem; color: #94a3b8; margin-top: 4px; font-weight: 600; }
 
@@ -243,7 +251,7 @@
   transform: translateY(-4px);
   box-shadow: 0 8px 28px rgba(239,68,68,0.08);
 }
-.apc-emoji { font-size: 2.4rem; margin-bottom: 14px; }
+.apc-emoji { font-size: 1.8rem; margin-bottom: 14px; color: #7c3aed; display: flex; align-items: center; justify-content: center; }
 .about-problem-card h3 { font-size: 1.08rem; font-weight: 700; margin-bottom: 8px; color: #1e293b; }
 .about-problem-card p { font-size: 0.9rem; color: #64748b; line-height: 1.6; }
 

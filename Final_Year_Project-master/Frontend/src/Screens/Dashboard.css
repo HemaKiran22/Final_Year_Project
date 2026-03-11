@@ -1324,9 +1324,12 @@ body::before {
   backdrop-filter: blur(4px);
   display: flex;
   justify-content: center;
-  align-items: center;
+  align-items: flex-start;
+  padding: 24px 16px;
   z-index: 2000;
+  overflow-y: auto;
   animation: fadeInOverlay 0.2s ease;
+  box-sizing: border-box;
 }
 
 @keyframes fadeInOverlay {
@@ -1336,14 +1339,17 @@ body::before {
 
 .form-modal {
   background-color: var(--card-bg);
-  padding: 32px;
+  padding: 28px 32px;
   border-radius: var(--border-radius-lg);
   box-shadow: 0 24px 48px rgba(0,0,0,0.15);
   width: 90%;
   max-width: 500px;
+  max-height: 90vh;
+  overflow-y: auto;
   position: relative;
   animation: slideUpModal 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
   border: 1px solid var(--light-gray);
+  margin: auto;
 }
 
 @keyframes slideUpModal {
@@ -1354,13 +1360,13 @@ body::before {
 .form-modal h2 {
   text-align: center;
   color: var(--dark);
-  margin-bottom: 24px;
+  margin-bottom: 18px;
   font-size: 20px;
   font-weight: 700;
 }
 
 .form-group {
-  margin-bottom: 18px;
+  margin-bottom: 14px;
 }
 
 .form-group label {

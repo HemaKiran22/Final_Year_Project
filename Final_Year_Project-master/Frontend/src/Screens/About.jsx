@@ -4,7 +4,8 @@ import { motion } from 'framer-motion';
 import {
   FaShieldAlt, FaLeaf, FaCar, FaUsers, FaMoneyBillWave, FaRoute,
   FaHandshake, FaChartLine, FaArrowRight, FaQuoteLeft, FaHeart,
-  FaLightbulb, FaGlobe, FaRocket
+  FaLightbulb, FaGlobe, FaRocket, FaStar, FaSearch, FaBullseye,
+  FaBolt, FaGem, FaHome, FaExclamationTriangle, FaRoad, FaIndustry
 } from 'react-icons/fa';
 import { HiUserGroup } from 'react-icons/hi';
 import logo from '../assets/logo.png';
@@ -65,7 +66,7 @@ const About = () => {
       {/* ─── Hero ─── */}
       <section className="about-hero">
         <motion.div className="about-hero-content" initial="hidden" animate="visible" variants={fadeUp} transition={{ duration: 0.7 }}>
-          <span className="about-hero-badge">🌟 About CommunityCarpool</span>
+          <span className="about-hero-badge"><FaStar className="about-badge-icon" /> About CommunityCarpool</span>
           <h1>Safer rides start with<br /><span className="about-gradient-text">trusted neighbors</span></h1>
           <p className="about-hero-sub">
             We're on a mission to transform daily commutes by connecting neighbors who travel the same routes —
@@ -78,17 +79,17 @@ const About = () => {
         </motion.div>
         <div className="about-hero-visual">
           <motion.div className="about-hero-card" initial="hidden" animate="visible" variants={scaleIn} transition={{ delay: 0.3, duration: 0.6 }}>
-            <div className="ahc-icon">🏘️</div>
+            <div className="ahc-icon"><FaHome /></div>
             <div className="ahc-stat">50+</div>
             <div className="ahc-label">Communities</div>
           </motion.div>
           <motion.div className="about-hero-card" initial="hidden" animate="visible" variants={scaleIn} transition={{ delay: 0.5, duration: 0.6 }}>
-            <div className="ahc-icon">🚗</div>
+            <div className="ahc-icon"><FaCar /></div>
             <div className="ahc-stat">12,500+</div>
             <div className="ahc-label">Rides Shared</div>
           </motion.div>
           <motion.div className="about-hero-card" initial="hidden" animate="visible" variants={scaleIn} transition={{ delay: 0.7, duration: 0.6 }}>
-            <div className="ahc-icon">🌍</div>
+            <div className="ahc-icon"><FaLeaf /></div>
             <div className="ahc-stat">57 Tons</div>
             <div className="ahc-label">CO₂ Saved</div>
           </motion.div>
@@ -98,19 +99,19 @@ const About = () => {
       {/* ─── The Problem ─── */}
       <section className="about-problem">
         <motion.div className="about-section-header" initial="hidden" whileInView="visible" variants={fadeUp} viewport={{ once: true }}>
-          <span className="about-section-badge">🔍 The Problem</span>
+          <span className="about-section-badge"><FaSearch className="about-badge-icon" /> The Problem</span>
           <h2>Ride-sharing shouldn't mean<br />riding with <span className="about-highlight">strangers</span></h2>
           <p>Traditional ride-sharing apps connect you with random people — creating safety concerns, trust issues, and an impersonal experience. Your daily commute deserves better.</p>
         </motion.div>
         <div className="about-problem-grid">
           {[
-            { emoji: '⚠️', title: 'Safety Risks', desc: 'Sharing rides with unknown drivers or passengers creates anxiety and potential danger.' },
-            { emoji: '💸', title: 'Rising Costs', desc: 'Solo driving means bearing the full burden of fuel, tolls, and parking every single day.' },
-            { emoji: '🚦', title: 'Traffic Chaos', desc: 'Single-occupancy vehicles clog roads, making everyone\'s commute longer and stressful.' },
-            { emoji: '🏭', title: 'Pollution', desc: 'Millions of cars emitting CO₂ daily — when many could share just one ride.' },
+            { icon: <FaExclamationTriangle />, title: 'Safety Risks', desc: 'Sharing rides with unknown drivers or passengers creates anxiety and potential danger.' },
+            { icon: <FaMoneyBillWave />, title: 'Rising Costs', desc: 'Solo driving means bearing the full burden of fuel, tolls, and parking every single day.' },
+            { icon: <FaRoad />, title: 'Traffic Chaos', desc: 'Single-occupancy vehicles clog roads, making everyone\'s commute longer and stressful.' },
+            { icon: <FaIndustry />, title: 'Pollution', desc: 'Millions of cars emitting CO₂ daily — when many could share just one ride.' },
           ].map((item, i) => (
             <motion.div key={i} className="about-problem-card" initial="hidden" whileInView="visible" variants={scaleIn} viewport={{ once: true }} transition={{ delay: i * 0.1 }}>
-              <div className="apc-emoji">{item.emoji}</div>
+              <div className="apc-emoji">{item.icon}</div>
               <h3>{item.title}</h3>
               <p>{item.desc}</p>
             </motion.div>
@@ -121,7 +122,7 @@ const About = () => {
       {/* ─── Our Solution / Goals ─── */}
       <section className="about-goals">
         <motion.div className="about-section-header" initial="hidden" whileInView="visible" variants={fadeUp} viewport={{ once: true }}>
-          <span className="about-section-badge">🎯 Our Goals</span>
+          <span className="about-section-badge"><FaBullseye className="about-badge-icon" /> Our Goals</span>
           <h2>Building a better way to <span className="about-gradient-text">commute together</span></h2>
           <p>ColonyCarpool is community-based ride-sharing — you only ride with verified members of your housing society.</p>
         </motion.div>
@@ -139,7 +140,7 @@ const About = () => {
       {/* ─── How It Works ─── */}
       <section className="about-how">
         <motion.div className="about-section-header" initial="hidden" whileInView="visible" variants={fadeUp} viewport={{ once: true }}>
-          <span className="about-section-badge">⚡ How It Works</span>
+          <span className="about-section-badge"><FaBolt className="about-badge-icon" /> How It Works</span>
           <h2>Four simple steps to<br /><span className="about-gradient-text">smarter commuting</span></h2>
         </motion.div>
         <div className="about-steps">
@@ -158,7 +159,7 @@ const About = () => {
       {/* ─── Our Values ─── */}
       <section className="about-values">
         <motion.div className="about-section-header" initial="hidden" whileInView="visible" variants={fadeUp} viewport={{ once: true }}>
-          <span className="about-section-badge">💎 Our Values</span>
+          <span className="about-section-badge"><FaGem className="about-badge-icon" /> Our Values</span>
           <h2>What drives us <span className="about-gradient-text">every day</span></h2>
         </motion.div>
         <div className="about-values-grid">

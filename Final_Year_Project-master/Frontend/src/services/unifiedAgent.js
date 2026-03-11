@@ -108,11 +108,11 @@ export const INTENTS = {
 };
 const _P = [
   { i:INTENTS.MY_RIDES,       rx:[/\bmy\s+rides/i,/\bshow\s*(my|all)?\s*rides/i,/\bride\s*(history|records?|log)\b/i,/\bmy\s+(past|previous|completed|old)\s+rides?/i] },
+  { i:INTENTS.POST_RIDE,      rx:[/(?:^|\s)(?:post|create|add|offer|share)\s+(?:a\s+)?ride/i,/(?:^|\s)i(?:'m|\s+am)\s+(?:driving|going|heading)\b/i] },
   { i:INTENTS.FIND_RIDE,      rx:[/\b(find|search|show|look\s*for|get|any|available)\b.*\bride/i,/\brides?\s+(to|towards|going|heading|near)\b/i,/\bwho\s+(is\s+)?going\s+to\b/i,/\b(is|are)\s+(there|any)\s+rides?/i,/\bcan\s+i\s+get\s+a\s+ride/i] },
   { i:INTENTS.STATS,          rx:[/\b(dashboard|stats|statistics|analytics|summary|report|impact)\b/i,/\b(how\s+much|total)\s+(money|co2|carbon|savings)\b/i,/\brecent\s+activity\b/i,/\bcheck\s+my\s+(stats|progress|impact)\b/i,/\bhow\s+am\s+i\s+doing\b/i] },
   { i:INTENTS.RECOMMEND_RIDE, rx:[/\brecommend/i,/\bsuggest/i,/\bbest\s+ride/i,/\bwhich\s+ride\s+should\s+i/i] },
   { i:INTENTS.JOIN_RIDE,      rx:[/\bjoin\b.*\bride/i,/\bjoin\s+(this|that|the|ride\s*#?\d)/i,/\bi\s+want\s+to\s+join/i,/\badd\s+me\s+to/i] },
-  { i:INTENTS.POST_RIDE,      rx:[/(?:^|\s)(?:post|create|add|offer|share)\s+(?:a\s+)?ride/i,/(?:^|\s)i(?:'m|\s+am)\s+(?:driving|going|heading)\b/i] },
   { i:INTENTS.LEAVE_RIDE,     rx:[/\bleave\b.*\bride/i,/\bremove\s+me\s+from/i,/\bi\s+(want\s+to\s+)?leave/i,/\bdrop\s+out/i] },
   { i:INTENTS.CANCEL_RIDE,    rx:[/\bcancel\b.*\bride/i,/\bdelete\b.*\bride/i,/\bremove\b.*\b(my\s+)?ride/i] },
   { i:INTENTS.RIDE_STATUS,    rx:[/\bwho\s+(joined|is\s+in)\b/i,/\bseats?\s*(left|available|remaining)/i,/\bride\s+status/i,/\bstatus\s+of\s+(my\s+)?ride/i] },

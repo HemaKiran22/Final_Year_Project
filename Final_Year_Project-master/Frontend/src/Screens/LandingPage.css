@@ -756,6 +756,10 @@ body {
   .features-container { flex-direction: column; }
 }
 
+@media (max-width: 1100px) {
+  .footer-container { grid-template-columns: repeat(2, 1fr); gap: 24px; }
+}
+
 @media (max-width: 768px) {
   .stats { padding: 3rem 1rem; }
   .features { padding: 3rem 1rem; }
@@ -799,10 +803,11 @@ body {
 
 .footer-container {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 40px;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 30px;
   max-width: 1200px;
   margin: auto;
+  box-sizing: border-box;
 }
 
 .footer-brand h2 {
@@ -868,11 +873,13 @@ body {
 
 .newsletter-form {
   display: flex;
+  flex-wrap: wrap;
   gap: 10px;
 }
 
 .newsletter-form input {
   flex: 1;
+  min-width: 140px;
   padding: 12px 14px;
   border-radius: 8px;
   border: none;
@@ -888,6 +895,7 @@ body {
   border-radius: 8px;
   font-weight: 600;
   cursor: pointer;
+  white-space: nowrap;
   transition: background 0.3s ease;
 }
 

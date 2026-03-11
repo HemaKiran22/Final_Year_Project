@@ -22,10 +22,10 @@
   align-items: center;
   gap: 20px;
   background: linear-gradient(135deg, #0d9488 0%, #0891b2 50%, #0284c7 100%);
-  padding: 32px 28px;
+  padding: 24px 28px;
   border-radius: 20px;
   color: white;
-  margin-bottom: 24px;
+  margin-bottom: 20px;
   box-shadow: 0 8px 28px rgba(13,148,136,0.3);
   position: relative;
   overflow: hidden;
@@ -468,8 +468,14 @@
   .action-btn-modern span { display: none; }
 }
 
-@media (min-width: 769px) and (max-width: 1024px) {
-  .feed-container-modern { max-width: 640px; }
+@media (min-width: 769px) and (max-width: 1200px) {
+  .feed-container-modern { max-width: 640px; padding: 16px; }
+  .feed-header-modern { padding: 22px 20px; border-radius: 16px; margin-bottom: 18px; }
+  .feed-title { font-size: 1.5rem; }
+  .feed-subtitle { font-size: 0.88rem; }
+  .header-icon-circle { width: 52px; height: 52px; font-size: 1.5rem; }
+  .post-creator-modern { padding: 18px 16px; }
+  .feed-item-modern { padding: 18px 16px; }
 }
 
 /* ---- Scrollbar ---- */

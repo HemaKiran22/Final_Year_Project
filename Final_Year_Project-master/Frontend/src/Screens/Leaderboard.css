@@ -2,7 +2,7 @@
 .leaderboard-container-modern {
   max-width: 1000px;
   margin: 0 auto;
-  padding: 40px 20px;
+  padding: 24px 20px;
   animation: fadeInUp 0.6s ease-out;
 }
 
@@ -14,11 +14,11 @@
 /* Header Section */
 .leaderboard-header {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  padding: 48px 40px;
+  padding: 36px 32px;
   border-radius: 24px;
   text-align: center;
   color: white;
-  margin-bottom: 40px;
+  margin-bottom: 28px;
   box-shadow: 0 10px 40px rgba(102, 126, 234, 0.3);
   position: relative;
   overflow: hidden;
@@ -71,7 +71,7 @@
 .tab-icon { font-size: 1.2rem; }
 
 /* Podium Section */
-.podium-section { margin-bottom: 48px; padding: 40px 20px; background: linear-gradient(135deg, #f0f4ff, #e0e7ff); border-radius: 24px; }
+.podium-section { margin-bottom: 32px; padding: 32px 20px; background: linear-gradient(135deg, #f0f4ff, #e0e7ff); border-radius: 24px; }
 .podium-container { display: flex; justify-content: center; align-items: flex-end; gap: 20px; max-width: 800px; margin: 0 auto; }
 .podium-item { display: flex; flex-direction: column; align-items: center; position: relative; animation: podiumRise 0.8s ease-out; }
 
@@ -149,10 +149,31 @@
 .empty-state h3 { font-size: 1.5rem; color: #1f2937; margin: 0 0 12px 0; }
 .empty-state p { color: #6b7280; font-size: 1rem; margin: 0; }
 
-/* ========== TABLETS ========== */
-@media (min-width: 769px) and (max-width: 1024px) {
-  .leaderboard-container-modern { max-width: 900px; }
-  .podium-container { max-width: 700px; }
+/* ========== LAPTOP (769px – 1200px) ========== */
+@media (min-width: 769px) and (max-width: 1200px) {
+  .leaderboard-container-modern { max-width: 900px; padding: 20px 16px; }
+  .leaderboard-header { padding: 28px 24px; margin-bottom: 24px; border-radius: 18px; }
+  .leaderboard-header::before { animation: none; }
+  .trophy-icon { font-size: 2.8rem; margin-bottom: 10px; animation: none; }
+  .leaderboard-title { font-size: 1.8rem; }
+  .leaderboard-subtitle { font-size: 0.95rem; margin-bottom: 20px; }
+  .filter-tab { padding: 10px 18px; font-size: 0.9rem; }
+
+  .podium-section { padding: 24px 16px; margin-bottom: 24px; border-radius: 18px; }
+  .podium-container { gap: 14px; max-width: 640px; }
+  .podium-avatar { width: 64px; height: 64px; font-size: 1.6rem; }
+  .podium-avatar.champion { width: 80px; height: 80px; font-size: 2rem; animation: none; }
+  .podium-base { width: 100px; }
+  .podium-base.first { height: 110px; }
+  .podium-base.second { height: 80px; }
+  .podium-base.third { height: 64px; }
+  .podium-name { font-size: 0.88rem; }
+  .first-place .podium-name { font-size: 1rem; }
+  .crown-icon { font-size: 2rem; top: -32px; animation: none; }
+  .medal-badge { animation: none; }
+
+  .leaderboard-list-modern { padding: 20px 16px; border-radius: 18px; }
+  .leaderboard-item-modern { padding: 14px 16px; }
 }
 
 /* ========== MOBILE ========== */

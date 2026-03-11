@@ -64,6 +64,9 @@ const Dashboard = () => {
   const [findRideResults, setFindRideResults] = useState([]);
   const [findRideLoading, setFindRideLoading] = useState(false);
   const [findRideSearched, setFindRideSearched] = useState(false);
+  const [findTimeHour, setFindTimeHour] = useState('');
+  const [findTimeMinute, setFindTimeMinute] = useState('00');
+  const [findTimeAmPm, setFindTimeAmPm] = useState('AM');
 
 
   // Post ride form model + filters
@@ -786,6 +789,13 @@ const Dashboard = () => {
       const res = await joinRideById(db, auth, ride, userName);
       if (res.ok) {
         notify.success(`Successfully joined the ride to ${ride.destination}! ${availableSeats - 1} seat(s) remaining.`, '🎉 Ride Joined!');
+        // Update findRideResults so the button immediately reflects "✓ Joined"
+        setFindRideResults(prev => prev.map(r => {
+          if (r.id !== ride.id) return r;
+          const updatedPassengers = Array.isArray(r.passengers) ? [...r.passengers, userId] : [userId];
+          const updatedAvailable = r.availableSeats != null ? Number(r.availableSeats) - 1 : null;
+          return { ...r, passengers: updatedPassengers, ...(updatedAvailable != null ? { availableSeats: updatedAvailable } : {}) };
+        }));
       } else {
         notify.error(res.message || 'Could not join this ride.');
       }
@@ -1355,71 +1365,6 @@ const Dashboard = () => {
               </div>
             </div>
 
-            {/* Weekly/Monthly Insights */}
-            <div className="dashboard-section animate-in delay-1">
-              <div className="section-header">
-                <h2 className="section-title"><FaChartLine style={{ marginRight: '10px' }} /> Your Impact This Week</h2>
-              </div>
-            
-            
-              <div className="insights-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px', marginBottom: '20px' }}>
-                <div className="insight-card" style={{ background: '#f8fafc', color: '#1f2937', padding: '20px', borderRadius: '12px', boxShadow: 'var(--shadow-light)', border: '1px solid #e5e7eb' }}>
-                  <div style={{ fontSize: '14px', opacity: '0.9' }}>Rides This Week</div>
-                  <div style={{ fontSize: '32px', fontWeight: 'bold', margin: '10px 0' }}>{weeklyStats.rides}</div>
-                  <div style={{ fontSize: '12px', opacity: '0.8', color: '#16a34a' }}>↑ Keep it up!</div>
-                </div>
-                
-                <div className="insight-card" style={{ background: '#f8fafc', color: '#1f2937', padding: '20px', borderRadius: '12px', boxShadow: 'var(--shadow-light)', border: '1px solid #e5e7eb' }}>
-                  <div style={{ fontSize: '14px', opacity: '0.9' }}>Saved This Week</div>
-                  <div style={{ fontSize: '32px', fontWeight: 'bold', margin: '10px 0' }}>₹{weeklyStats.saved.toFixed(0)}</div>
-                  <div style={{ fontSize: '12px', opacity: '0.8' }}>Monthly: ₹{monthlyStats.saved.toFixed(0)}</div>
-                </div>
-                
-                <div className="insight-card" style={{ background: '#f8fafc', color: '#1f2937', padding: '20px', borderRadius: '12px', boxShadow: 'var(--shadow-light)', border: '1px solid #e5e7eb' }}>
-                  <div style={{ fontSize: '14px', opacity: '0.9' }}>CO₂ Reduced</div>
-                  <div style={{ fontSize: '32px', fontWeight: 'bold', margin: '10px 0' }}>{weeklyStats.co2.toFixed(1)}kg</div>
-                  <div style={{ fontSize: '12px', opacity: '0.8' }}>This week</div>
-                </div>
-                
-                <div className="insight-card" style={{ background: '#f8fafc', color: '#1f2937', padding: '20px', borderRadius: '12px', boxShadow: 'var(--shadow-light)', border: '1px solid #e5e7eb' }}>
-                  <div style={{ fontSize: '14px', opacity: '0.9' }}>Current Streak</div>
-                  <div style={{ fontSize: '32px', fontWeight: 'bold', margin: '10px 0', display: 'flex', alignItems: 'center', gap: '10px', color: '#ea580c' }}><FaFire /> {currentStreak}</div>
-                  <div style={{ fontSize: '12px', opacity: '0.8' }}>{currentStreak > 0 ? 'Days in a row!' : 'Start your streak'}</div>
-                </div>
-              </div>
-              
-              {/* Achievements */}
-              {achievements.length > 0 && (
-                <div style={{ marginTop: '20px' }}>
-                  <h3 style={{ fontSize: '18px', marginBottom: '15px', color: 'var(--dark)', display: 'flex', alignItems: 'center', gap: '8px' }}><FaMedal /> Achievements Unlocked</h3>
-                  <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                    {achievements.map(ach => (
-                      <div key={ach.id} className="achievement-badge" style={{ 
-                        background: 'var(--card-bg)', 
-                        border: '2px solid var(--accent)', 
-                        borderRadius: '8px', 
-                        padding: '12px 16px', 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        gap: '10px',
-                        boxShadow: 'var(--shadow-light)',
-                        transition: 'transform 0.2s'
-                      }}
-                      onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
-                      onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
-                      >
-                        <span style={{ fontSize: '24px' }}>{ach.icon}</span>
-                        <div>
-                          <div style={{ fontWeight: '600', color: 'var(--dark)' }}>{ach.title}</div>
-                          <div style={{ fontSize: '12px', color: 'var(--gray)' }}>{ach.desc}</div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-
             {/* AI-Powered Ride Recommendations */}
             <div className="dashboard-section animate-in delay-1">
               <div className="section-header">
@@ -1554,7 +1499,7 @@ const Dashboard = () => {
                         {!isFull && !isClosed && !alreadyJoined && (
                           <button 
                             className="btn btn-secondary"
-                            onClick={() => createOrGetPrivateChat(db, auth, ride).then(chatId => chatId && navigate(`/privatechat/${chatId}`))}
+                            onClick={() => handleOpenPrivateChat(ride)}
                             style={{ marginLeft: '10px' }}
                           >
                             Message Driver
@@ -1956,11 +1901,49 @@ const Dashboard = () => {
                 </div>
                 <div className="form-group">
                   <label><FaClock style={{ marginRight: '6px' }} /> Preferred Time</label>
-                  <input
-                    type="time"
-                    value={findRideQuery.time}
-                    onChange={e => setFindRideQuery(p => ({ ...p, time: e.target.value }))}
-                  />
+                  <div className="time-picker">
+                    <select
+                      aria-label="Hour"
+                      value={findTimeHour}
+                      onChange={e => {
+                        const h = e.target.value;
+                        setFindTimeHour(h);
+                        if (h) setFindRideQuery(p => ({ ...p, time: to24h(h, findTimeMinute, findTimeAmPm) }));
+                      }}
+                    >
+                      <option value="">HH</option>
+                      {[...Array(12)].map((_, i) => {
+                        const h = String(i + 1);
+                        return <option key={h} value={h}>{h}</option>;
+                      })}
+                    </select>
+                    <span className="time-sep">:</span>
+                    <select
+                      aria-label="Minute"
+                      value={findTimeMinute}
+                      onChange={e => {
+                        const m = e.target.value;
+                        setFindTimeMinute(m);
+                        if (findTimeHour) setFindRideQuery(p => ({ ...p, time: to24h(findTimeHour, m, findTimeAmPm) }));
+                      }}
+                    >
+                      {['00','05','10','15','20','25','30','35','40','45','50','55'].map(m => (
+                        <option key={m} value={m}>{m}</option>
+                      ))}
+                    </select>
+                    <select
+                      aria-label="AM/PM"
+                      value={findTimeAmPm}
+                      onChange={e => {
+                        const ap = e.target.value;
+                        setFindTimeAmPm(ap);
+                        if (findTimeHour) setFindRideQuery(p => ({ ...p, time: to24h(findTimeHour, findTimeMinute, ap) }));
+                      }}
+                    >
+                      <option value="AM">AM</option>
+                      <option value="PM">PM</option>
+                    </select>
+                  </div>
                 </div>
               </div>
               <button type="submit" className="btn btn-primary find-ride-search-btn" disabled={findRideLoading}>
@@ -2041,12 +2024,12 @@ const Dashboard = () => {
                             onClick={() => !isFull && !alreadyJoined && !isJoining && handleJoinRide(ride)}
                             disabled={isFull || alreadyJoined || isJoining}
                           >
-                            {isJoining ? 'Joining...' : alreadyJoined ? '✓ Joined' : isFull ? 'Ride Full' : 'Join Ride'}
+                            {isJoining ? 'Joining...' : alreadyJoined ? 'Joined' : isFull ? 'Ride Full' : 'Join Ride'}
                           </button>
                           {!isFull && !alreadyJoined && (
                             <button
                               className="btn btn-secondary"
-                              onClick={() => createOrGetPrivateChat(db, auth, ride).then(chatId => chatId && navigate(`/privatechat/${chatId}`))}
+                              onClick={() => handleOpenPrivateChat(ride)}
                               style={{ marginLeft: '10px' }}
                             >
                               Message Driver
