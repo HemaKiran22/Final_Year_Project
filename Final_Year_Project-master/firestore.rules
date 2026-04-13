@@ -2,6 +2,15 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    function isAdmin() {
+      return request.auth != null
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && (
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
+          || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true
+        );
+    }
+
     // Helpers
     function isRideMember(rideId) {
       return request.auth != null && (
@@ -23,17 +32,74 @@ service cloud.firestore {
 
     // --- Users ---
     match /users/{userId} {
-      allow create: if request.auth != null && request.auth.uid == userId;
+      allow create: if request.auth != null
+        && request.auth.uid == userId
+        && request.resource.data.status == 'pending_approval';
+
       allow read: if request.auth != null;
+
+      // Admin can update anything, including status transitions
       allow update: if request.auth != null && (
-        // Users can update their own document
-        request.auth.uid == userId
-        // Others can update rating fields (averageRating, totalRatings)
+        isAdmin()
+        // Users can update their own profile but cannot self-approve/suspend/reject
         || (
-          request.resource.data.averageRating is number
-          && request.resource.data.totalRatings is number
+          request.auth.uid == userId
+          && request.resource.data.status == resource.data.status
+          && request.resource.data.reviewedBy == resource.data.reviewedBy
+          && request.resource.data.reviewedAt == resource.data.reviewedAt
+          && request.resource.data.reviewAction == resource.data.reviewAction
+          && request.resource.data.reviewReason == resource.data.reviewReason
         )
       );
+    }
+
+    // --- Private Verification Data ---
+    match /userVerification/{userId} {
+      allow create: if request.auth != null && request.auth.uid == userId;
+      allow read: if request.auth != null && (request.auth.uid == userId || isAdmin());
+      allow update: if request.auth != null && (request.auth.uid == userId || isAdmin());
+      allow delete: if isAdmin();
+    }
+
+    // --- Invite Codes ---
+    match /inviteCodes/{inviteId} {
+      // Signup flow reads invite code only after auth is created
+      allow read: if request.auth != null;
+
+      // Admin creates/manages invite codes
+      allow create, delete: if isAdmin();
+
+      // Signed-in users may only consume an existing active code by incrementing usage metadata
+      allow update: if request.auth != null && (
+        isAdmin()
+        || (
+          resource.data.active == true
+          && request.resource.data.codeNormalized == resource.data.codeNormalized
+          && request.resource.data.block == resource.data.block
+          && request.resource.data.flatNumber == resource.data.flatNumber
+          && request.resource.data.registeredPhone == resource.data.registeredPhone
+          && request.resource.data.maxUses == resource.data.maxUses
+          && request.resource.data.createdBy == resource.data.createdBy
+          && request.resource.data.createdAt == resource.data.createdAt
+          && request.resource.data.expiresAt == resource.data.expiresAt
+          && request.resource.data.active == resource.data.active
+          && request.resource.data.usedCount == resource.data.usedCount + 1
+          && request.resource.data.lastUsedAt is timestamp
+          && request.resource.data.lastUsedBy == request.auth.uid
+          && request.resource.data.lastUsedPhoneLast4 is string
+        )
+      );
+    }
+
+    // --- Resident Registry ---
+    match /residentRegistry/{recordId} {
+      allow read, create, update, delete: if isAdmin();
+    }
+
+    // --- Approval Audit ---
+    match /approvalAudit/{auditId} {
+      allow read, create: if isAdmin();
+      allow update, delete: if false;
     }
 
     // --- Rides ---

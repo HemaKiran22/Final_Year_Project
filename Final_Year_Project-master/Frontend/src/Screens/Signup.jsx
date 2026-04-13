@@ -1,8 +1,15 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { createUserWithEmailAndPassword, updateProfile, signOut } from 'firebase/auth';
+import { createUserWithEmailAndPassword, updateProfile, signOut, deleteUser } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase';
+import {
+  consumeInviteCode,
+  normalizeBlock,
+  normalizeFlat,
+  normalizeInviteCode,
+  normalizePhone,
+} from '../services/verificationService';
 import './Signup.css';
 import logo from '../assets/logo.png';
 
@@ -11,7 +18,10 @@ const Signup = () => {
     name: '',
     phoneNumber: '',
     housingSociety: 'Brigade',
+    block: '',
     flatNumber: '',
+    inviteCode: '',
+    phoneVerified: false,
     email: '',
     password: ''
   });
@@ -29,6 +39,27 @@ const Signup = () => {
     setMessage('');
 
     try {
+      const normalizedPhone = normalizePhone(formData.phoneNumber);
+      const normalizedBlock = normalizeBlock(formData.block);
+      const normalizedFlat = normalizeFlat(formData.flatNumber);
+      const normalizedInviteCode = normalizeInviteCode(formData.inviteCode);
+
+      if (normalizedPhone.length < 10) {
+        setMessage('Error: Please enter a valid phone number.');
+        setIsLoading(false);
+        return;
+      }
+      if (!normalizedBlock || !normalizedFlat) {
+        setMessage('Error: Block and flat number are required.');
+        setIsLoading(false);
+        return;
+      }
+      if (!normalizedInviteCode) {
+        setMessage('Error: Invite code is required.');
+        setIsLoading(false);
+        return;
+      }
+
       const userCredential = await createUserWithEmailAndPassword(
         auth,
         formData.email,
@@ -40,18 +71,56 @@ const Signup = () => {
         displayName: formData.name
       });
 
+      const inviteConsume = await consumeInviteCode(db, normalizedInviteCode, {
+        userId: user.uid,
+        phoneLast4: normalizedPhone.slice(-4),
+      });
+      if (!inviteConsume.ok) {
+        try { await deleteUser(user); } catch {}
+        setMessage(`Error: ${inviteConsume.message}`);
+        setIsLoading(false);
+        return;
+      }
+
       await setDoc(doc(db, 'users', user.uid), {
-        name: formData.name,
-        phoneNumber: formData.phoneNumber,
+        name: formData.name.trim(),
         housingSociety: formData.housingSociety,
-        flatNumber: formData.flatNumber,
+        flatNumber: normalizedFlat,
         email: formData.email,
         status: 'pending_approval',
+        reviewReason: '',
+        reviewedAt: null,
+        reviewedBy: null,
         createdAt: new Date()
       });
 
+      await setDoc(doc(db, 'userVerification', user.uid), {
+        userId: user.uid,
+        phoneNumber: normalizedPhone,
+        phoneLast4: normalizedPhone.slice(-4),
+        phoneVerified: Boolean(formData.phoneVerified),
+        phoneVerificationMode: 'otp-placeholder',
+        block: normalizedBlock,
+        flatNumber: normalizedFlat,
+        inviteCode: normalizedInviteCode,
+        inviteCodeRef: inviteConsume?.invite?.id || null,
+        registryMatchStatus: 'unchecked',
+        otpIntegrationTodo: true,
+        createdAt: new Date(),
+      });
+
       setMessage('Signup successful! Redirecting to login...');
-      setFormData({ name: '', phoneNumber: '', housingSociety: 'Brigade', flatNumber: '', email: '', password: '' });
+      setFormData({
+        name: '',
+        phoneNumber: '',
+        housingSociety: 'Brigade',
+        block: '',
+        flatNumber: '',
+        inviteCode: '',
+        phoneVerified: false,
+        email: '',
+        password: ''
+      });
       
       try {
         await signOut(auth);
@@ -60,7 +129,14 @@ const Signup = () => {
 
     } catch (error) {
       console.error("Signup error:", error);
-      setMessage(`Error: ${error.message}`);
+      const msg = String(error?.message || 'Signup failed.');
+      if (msg.toLowerCase().includes('insufficient permissions')) {
+        setMessage('Error: Signup blocked by Firestore rules. Please ask admin to publish the latest rules.');
+      } else if (msg.toLowerCase().includes("reading 'path'")) {
+        setMessage('Error: Invite code config issue. Please refresh once and ask admin to recreate the invite code.');
+      } else {
+        setMessage(`Error: ${msg}`);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -125,6 +201,18 @@ const Signup = () => {
               <label>Housing Society (fixed)</label>
               <span className="input-border"></span>
             </div>
+
+            <div className="input-group">
+              <input
+                type="text"
+                name="block"
+                value={formData.block}
+                onChange={handleChange}
+                required
+              />
+              <label>Block</label>
+              <span className="input-border"></span>
+            </div>
             
             <div className="input-group">
               <input 
@@ -137,6 +225,18 @@ const Signup = () => {
               <label>Flat Number</label>
               <span className="input-border"></span>
             </div>
+          </div>
+
+          <div className="input-group">
+            <input
+              type="text"
+              name="inviteCode"
+              value={formData.inviteCode}
+              onChange={handleChange}
+              required
+            />
+            <label>Invite Code</label>
+            <span className="input-border"></span>
           </div>
           
           <div className="input-group">
@@ -162,6 +262,16 @@ const Signup = () => {
             <label>Password</label>
             <span className="input-border"></span>
           </div>
+
+          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#475569' }}>
+            <input
+              type="checkbox"
+              name="phoneVerified"
+              checked={Boolean(formData.phoneVerified)}
+              onChange={(e) => setFormData((prev) => ({ ...prev, phoneVerified: e.target.checked }))}
+            />
+            I have verified my phone (OTP placeholder for current prototype)
+          </label>
           
           <button type="submit" disabled={isLoading} className="auth-button">
             {isLoading ? (

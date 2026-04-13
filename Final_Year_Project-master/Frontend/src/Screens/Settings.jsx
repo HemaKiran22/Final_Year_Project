@@ -6,8 +6,29 @@ import {
   reauthenticateWithCredential,
   signOut,
 } from 'firebase/auth';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import {
+  addDoc,
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  limit,
+  orderBy,
+  query,
+  setDoc,
+  updateDoc,
+  where,
+} from 'firebase/firestore';
 import { auth, db } from '../firebase.js';
+import {
+  getCurrentUserRole,
+  getRegistryMatchStatus,
+  loadResidentRegistry,
+  normalizeBlock,
+  normalizeFlat,
+  normalizeInviteCode,
+  normalizePhone,
+} from '../services/verificationService';
 import {
   FaUser, FaLock, FaBell, FaSignOutAlt, FaCheck, FaTimes,
   FaEye, FaEyeSlash, FaShieldAlt, FaSave, FaPencilAlt,
@@ -45,6 +66,24 @@ const Settings = () => {
   const [notifLoading, setNotifLoading] = useState(false);
   const [notifMsg, setNotifMsg] = useState(null);
 
+  /* ── Admin onboarding state ── */
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [pendingUsers, setPendingUsers] = useState([]);
+  const [residentRegistry, setResidentRegistry] = useState([]);
+  const [reviewReasons, setReviewReasons] = useState({});
+  const [adminLoading, setAdminLoading] = useState(false);
+  const [adminMsg, setAdminMsg] = useState(null);
+  const [inviteCodes, setInviteCodes] = useState([]);
+  const [inviteForm, setInviteForm] = useState({
+    code: '',
+    block: '',
+    flatNumber: '',
+    registeredPhone: '',
+    maxUses: 1,
+    expiresInDays: 30,
+    active: true,
+  });
+
   /* ── Load notification prefs from Firestore ── */
   useEffect(() => {
     if (!user) return;
@@ -58,6 +97,160 @@ const Settings = () => {
     };
     load();
   }, [user]);
+
+  const loadAdminData = async () => {
+    if (!user) return;
+    setAdminLoading(true);
+    setAdminMsg(null);
+    try {
+      const roleInfo = await getCurrentUserRole(db, user.uid);
+      if (!roleInfo.isAdmin) {
+        setIsAdmin(false);
+        setPendingUsers([]);
+        setInviteCodes([]);
+        setResidentRegistry([]);
+        return;
+      }
+
+      setIsAdmin(true);
+
+      const registry = await loadResidentRegistry(db);
+      setResidentRegistry(registry);
+
+      const usersRef = collection(db, 'users');
+      const pendingQ = query(usersRef, where('status', 'in', ['pending_approval', 'request_info']));
+      const pendingSnap = await getDocs(pendingQ);
+      const rows = await Promise.all(pendingSnap.docs.map(async (d) => {
+        const data = d.data() || {};
+        const verificationSnap = await getDoc(doc(db, 'userVerification', d.id));
+        const verification = verificationSnap.exists() ? verificationSnap.data() : {};
+        const combined = { ...data, ...verification };
+        const match = getRegistryMatchStatus(combined, registry);
+        return { id: d.id, ...combined, registryMatchStatus: match.status };
+      }));
+      setPendingUsers(rows);
+
+      const inviteQ = query(collection(db, 'inviteCodes'), orderBy('createdAt', 'desc'), limit(20));
+      const inviteSnap = await getDocs(inviteQ);
+      setInviteCodes(inviteSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
+    } catch (err) {
+      setAdminMsg({ type: 'error', text: err?.message || 'Failed to load admin data.' });
+    } finally {
+      setAdminLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadAdminData();
+  }, [user?.uid]);
+
+  const createInviteCode = async (e) => {
+    e.preventDefault();
+    if (!isAdmin || !user) return;
+    setAdminMsg(null);
+
+    const codeNormalized = normalizeInviteCode(inviteForm.code);
+    if (!codeNormalized) {
+      setAdminMsg({ type: 'error', text: 'Invite code is required.' });
+      return;
+    }
+
+    try {
+      const existsQ = query(collection(db, 'inviteCodes'), where('codeNormalized', '==', codeNormalized));
+      const existsSnap = await getDocs(existsQ);
+      if (!existsSnap.empty) {
+        setAdminMsg({ type: 'error', text: 'Invite code already exists.' });
+        return;
+      }
+
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + Number(inviteForm.expiresInDays || 30));
+
+      await addDoc(collection(db, 'inviteCodes'), {
+        code: codeNormalized,
+        codeNormalized,
+        block: normalizeBlock(inviteForm.block),
+        flatNumber: normalizeFlat(inviteForm.flatNumber),
+        registeredPhone: normalizePhone(inviteForm.registeredPhone),
+        phoneLast4: normalizePhone(inviteForm.registeredPhone).slice(-4),
+        createdBy: user.uid,
+        createdAt: new Date(),
+        expiresAt,
+        maxUses: Math.max(1, Number(inviteForm.maxUses || 1)),
+        usedCount: 0,
+        active: Boolean(inviteForm.active),
+      });
+
+      setInviteForm({
+        code: '',
+        block: '',
+        flatNumber: '',
+        registeredPhone: '',
+        maxUses: 1,
+        expiresInDays: 30,
+        active: true,
+      });
+      setAdminMsg({ type: 'success', text: 'Invite code created.' });
+      loadAdminData();
+    } catch (err) {
+      setAdminMsg({ type: 'error', text: err?.message || 'Failed to create invite code.' });
+    }
+  };
+
+  const applyUserAction = async (targetUser, action) => {
+    if (!isAdmin || !user || !targetUser?.id) return;
+    const reason = (reviewReasons[targetUser.id] || '').trim();
+    setAdminMsg(null);
+
+    const phoneFlagPresent = Object.prototype.hasOwnProperty.call(targetUser, 'phoneVerified');
+    if (action === 'approve' && phoneFlagPresent && targetUser.phoneVerified !== true) {
+      setAdminMsg({ type: 'error', text: `Cannot approve ${targetUser.name || targetUser.email}: phone is not verified.` });
+      return;
+    }
+
+    const nextStatus = action === 'approve'
+      ? 'approved'
+      : action === 'reject'
+        ? 'rejected'
+        : action === 'suspend'
+          ? 'suspended'
+          : 'request_info';
+
+    try {
+      await updateDoc(doc(db, 'users', targetUser.id), {
+        status: nextStatus,
+        reviewReason: reason || '',
+        reviewedAt: new Date(),
+        reviewedBy: user.uid,
+        reviewAction: action,
+      });
+
+      try {
+        await setDoc(doc(db, 'userVerification', targetUser.id), {
+          registryMatchStatus: targetUser.registryMatchStatus || 'unchecked',
+          reviewedAt: new Date(),
+          reviewedBy: user.uid,
+          reviewAction: action,
+        }, { merge: true });
+      } catch {}
+
+      await addDoc(collection(db, 'approvalAudit'), {
+        adminId: user.uid,
+        targetUserId: targetUser.id,
+        action,
+        reason: reason || '',
+        previousStatus: targetUser.status || 'pending_approval',
+        newStatus: nextStatus,
+        timestamp: new Date(),
+      });
+
+      setAdminMsg({ type: 'success', text: `Updated ${targetUser.name || targetUser.email} to ${nextStatus}.` });
+      setReviewReasons((prev) => ({ ...prev, [targetUser.id]: '' }));
+      loadAdminData();
+    } catch (err) {
+      setAdminMsg({ type: 'error', text: err?.message || 'Failed to update user status.' });
+    }
+  };
 
   /* ─────────────────────────────────────────── */
   /* HANDLERS                                    */
@@ -341,6 +534,151 @@ const Settings = () => {
             </button>
           </div>
         </div>
+
+        {/* ── Admin Verification Section ── */}
+        {isAdmin && (
+          <div className="settings-section">
+            <div className="section-title-row">
+              <div className="section-icon-wrap blue"><FaShieldAlt /></div>
+              <h2>Admin Verification Console</h2>
+            </div>
+
+            <div className="settings-field-group" style={{ gap: 14 }}>
+              <p className="section-description">
+                Review pending users, compare registry match strength, and manage invite codes.
+              </p>
+
+              {adminMsg && (
+                <div className={`settings-msg ${adminMsg.type}`}>
+                  {adminMsg.type === 'success' ? <FaCheck /> : <FaTimes />} {adminMsg.text}
+                </div>
+              )}
+
+              <div className="field-view-row" style={{ justifyContent: 'space-between' }}>
+                <span className="field-value">Pending Users ({pendingUsers.length})</span>
+                <button className="btn-edit" onClick={loadAdminData} type="button" disabled={adminLoading}>
+                  {adminLoading ? 'Refreshing…' : 'Refresh'}
+                </button>
+              </div>
+
+              {pendingUsers.length === 0 && (
+                <div className="settings-msg success">
+                  <FaCheck /> No pending users right now.
+                </div>
+              )}
+
+              {pendingUsers.map((u) => {
+                const phoneFlagPresent = Object.prototype.hasOwnProperty.call(u, 'phoneVerified');
+                const phoneVerified = !phoneFlagPresent || u.phoneVerified === true;
+                return (
+                  <div key={u.id} className="notif-toggle-row" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 10 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+                      <div className="notif-info">
+                        <span className="notif-label">{u.name || u.email || u.id}</span>
+                        <span className="notif-desc">
+                          {u.email || 'No email'} • {u.phoneNumber || 'No phone'} • {u.block || '-'}-{u.flatNumber || '-'}
+                        </span>
+                        <span className="notif-desc">
+                          Invite: {u.inviteCode || 'N/A'} • Match: {u.registryMatchStatus || 'unchecked'} • Phone: {phoneVerified ? 'verified' : 'not verified'}
+                        </span>
+                      </div>
+                    </div>
+
+                    <input
+                      className="field-input"
+                      placeholder="Reason (optional, required for reject/request info recommended)"
+                      value={reviewReasons[u.id] || ''}
+                      onChange={(e) => setReviewReasons((prev) => ({ ...prev, [u.id]: e.target.value }))}
+                    />
+
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                      <button
+                        className="btn-settings-primary"
+                        type="button"
+                        disabled={!phoneVerified}
+                        onClick={() => applyUserAction(u, 'approve')}
+                      >
+                        Approve
+                      </button>
+                      <button className="btn-edit" type="button" onClick={() => applyUserAction(u, 'request_info')}>
+                        Request Info
+                      </button>
+                      <button className="btn-cancel-edit" type="button" onClick={() => applyUserAction(u, 'reject')}>
+                        Reject
+                      </button>
+                      <button className="btn-settings-danger" type="button" onClick={() => applyUserAction(u, 'suspend')}>
+                        Suspend
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+
+              <div className="field-view-row" style={{ marginTop: 8 }}>
+                <span className="field-value">Create Invite Code</span>
+              </div>
+
+              <form onSubmit={createInviteCode} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 10 }}>
+                <input
+                  className="field-input"
+                  placeholder="Code"
+                  value={inviteForm.code}
+                  onChange={(e) => setInviteForm((p) => ({ ...p, code: e.target.value }))}
+                  required
+                />
+                <input
+                  className="field-input"
+                  placeholder="Block"
+                  value={inviteForm.block}
+                  onChange={(e) => setInviteForm((p) => ({ ...p, block: e.target.value }))}
+                  required
+                />
+                <input
+                  className="field-input"
+                  placeholder="Flat Number"
+                  value={inviteForm.flatNumber}
+                  onChange={(e) => setInviteForm((p) => ({ ...p, flatNumber: e.target.value }))}
+                  required
+                />
+                <input
+                  className="field-input"
+                  placeholder="Registered Phone"
+                  value={inviteForm.registeredPhone}
+                  onChange={(e) => setInviteForm((p) => ({ ...p, registeredPhone: e.target.value }))}
+                  required
+                />
+                <input
+                  className="field-input"
+                  type="number"
+                  min="1"
+                  placeholder="Max Uses"
+                  value={inviteForm.maxUses}
+                  onChange={(e) => setInviteForm((p) => ({ ...p, maxUses: e.target.value }))}
+                  required
+                />
+                <input
+                  className="field-input"
+                  type="number"
+                  min="1"
+                  placeholder="Expires In (Days)"
+                  value={inviteForm.expiresInDays}
+                  onChange={(e) => setInviteForm((p) => ({ ...p, expiresInDays: e.target.value }))}
+                  required
+                />
+                <button className="btn-settings-primary" type="submit">Create Code</button>
+              </form>
+
+              <div className="notif-info">
+                <span className="notif-label">Recent Invite Codes ({inviteCodes.length})</span>
+                {inviteCodes.slice(0, 8).map((code) => (
+                  <span className="notif-desc" key={code.id}>
+                    {code.code} • {code.block || '-'}-{code.flatNumber || '-'} • used {Number(code.usedCount || 0)}/{Number(code.maxUses || 1)} • {code.active === false ? 'inactive' : 'active'}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* ── Account Section ── */}
         <div className="settings-section danger-section">

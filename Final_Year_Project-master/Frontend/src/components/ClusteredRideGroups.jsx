@@ -18,7 +18,6 @@ const ClusteredRideGroups = ({ db, userId, userName, community, allRides, onJoin
     } catch { return new Set(); }
   });
   const [joiningId, setJoiningId] = useState(null);
-  const [joinedRideIds, setJoinedRideIds] = useState(new Set());
   const [showSection, setShowSection] = useState(true);
 
   /* ── Fetch clusters ── */
@@ -197,9 +196,10 @@ const ClusteredRideGroups = ({ db, userId, userName, community, allRides, onJoin
                       <div className="crg-members">
                         {cluster.suggestedMembers.map((m, i) => {
                           const memberRide = (cluster.existingRides || []).find(r => r.id === m.rideId);
-                          const canJoin = memberRide && m.userId !== userId && !alreadyInCluster;
+                          const ridePassengers = Array.isArray(memberRide?.passengers) ? memberRide.passengers : [];
+                          const hasJoined = ridePassengers.includes(userId);
+                          const canJoin = memberRide && m.userId !== userId && !hasJoined;
                           const isJoiningThis = joiningId === m.rideId;
-                          const hasJoined = joinedRideIds.has(m.rideId);
                           return (
                             <div key={i} className={`crg-member ${m.userId === userId ? 'crg-member-self' : ''}`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
                               <div style={{ flex: 1 }}>
@@ -229,7 +229,6 @@ const ClusteredRideGroups = ({ db, userId, userName, community, allRides, onJoin
                                         await joinRideById(db, memberRide, userId, userName || 'Rider');
                                         notify.success(`Joined ${m.userName}'s ride to ${m.destination}!`);
                                       }
-                                      setJoinedRideIds(prev => new Set([...prev, m.rideId]));
                                       invalidateClusterCache();
                                       loadClusters();
                                     } catch (err) {

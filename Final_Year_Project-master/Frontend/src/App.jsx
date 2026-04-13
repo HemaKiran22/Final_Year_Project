@@ -6,6 +6,7 @@ import Login from './Screens/Login';
 import Dashboard from './Screens/Dashboard';
 import Profile from './Screens/Profile';
 import Settings from './Screens/Settings';
+import AdminDashboard from './Screens/AdminDashboard';
 import SocietyFeed from './Screens/SocietyFeed';
 import Leaderboard from './Screens/Leaderboard';
 import PrivateChat from './Screens/PrivateChat';
@@ -127,6 +128,7 @@ function App() {
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/settings" element={<Settings />} />
+        <Route path="/admin" element={<AdminDashboard />} />
         <Route path="/societyfeed" element={<SocietyFeed />} />
         <Route path="/leaderboard" element={<Leaderboard />} />
         <Route path="/privatechat/:chatId" element={<PrivateChat />} />

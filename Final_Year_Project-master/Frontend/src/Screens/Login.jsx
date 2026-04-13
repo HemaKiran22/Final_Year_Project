@@ -26,9 +26,14 @@ const Login = () => {
         if (u) {
           const userDocRef = doc(db, 'users', u.uid);
           const userDoc = await getDoc(userDocRef);
-          const status = userDoc.exists() ? userDoc.data()?.status : 'pending_approval';
+          const data = userDoc.exists() ? userDoc.data() : {};
+          const status = data?.status || 'pending_approval';
           if (status === 'approved') {
-            navigate('/dashboard', { replace: true });
+            if (data?.role === 'admin' || data?.isAdmin === true) {
+              navigate('/admin', { replace: true });
+            } else {
+              navigate('/dashboard', { replace: true });
+            }
           } else {
             // Not approved yet — sign out and stay on login
             await signOut(auth);
@@ -77,10 +82,25 @@ const Login = () => {
             localStorage.removeItem('rememberedPassword');
           }
           setMessage('Login successful! Redirecting...');
-          setTimeout(() => navigate('/dashboard', { replace: true }), 2000);
+          const targetPath = (userData?.role === 'admin' || userData?.isAdmin === true) ? '/admin' : '/dashboard';
+          setTimeout(() => navigate(targetPath, { replace: true }), 2000);
         } else {
           await signOut(auth);
-          setMessage('Please wait until admin approval. You will be notified once approved.');
+          if (userData.status === 'rejected') {
+            setMessage(userData.reviewReason
+              ? `Signup rejected: ${userData.reviewReason}`
+              : 'Signup rejected by admin. Please contact support.');
+          } else if (userData.status === 'suspended') {
+            setMessage(userData.reviewReason
+              ? `Account suspended: ${userData.reviewReason}`
+              : 'Account suspended by admin.');
+          } else if (userData.status === 'request_info') {
+            setMessage(userData.reviewReason
+              ? `More details required: ${userData.reviewReason}`
+              : 'Admin requested additional details. Please contact support.');
+          } else {
+            setMessage('Please wait until admin approval. You will be notified once approved.');
+          }
         }
       } else {
         await signOut(auth);

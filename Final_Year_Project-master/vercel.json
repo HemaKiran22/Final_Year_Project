@@ -6,6 +6,7 @@
   "devCommand": "cd Frontend && npm run dev -- --port $PORT"
   ,
   "rewrites": [
+    { "source": "/api/(.*)", "destination": "/api/$1" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }

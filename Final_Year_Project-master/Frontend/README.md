@@ -42,7 +42,8 @@ The platform is designed around **trust** — users are admin-approved before th
 | Authentication | Firebase Auth (email/password) |
 | File Storage | Firebase Storage |
 | AI Chat API | Vercel Serverless Function (`/api/chat`) |
-| LLM Providers | Google Gemini, Groq, OpenAI (configurable) |
+| LLM Providers | Groq or OpenAI (configurable) |
+| Vector Database | Pinecone |
 | Hosting | Vercel |
 | E2E Tests | Playwright 1.58 |
 
@@ -95,10 +96,10 @@ The platform is designed around **trust** — users are admin-approved before th
 
 ### AI Chatbot (Floating)
 - Chat widget accessible from every page
-- Powered by Gemini-1.5-flash-latest (or Groq / OpenAI via env vars)
-- Understands natural language ride queries (`"find me a ride to Koramangala tomorrow at 9am"`)
-- Returns personalised ride recommendations and booking guidance
-- Falls back to general assistant if no ride intent is detected
+- Powered by LangChain with Pinecone-backed RAG and a configurable chat model
+- Answers app, policy, and project questions from the knowledge base
+- Shows source snippets for retrieved answers
+- Does not replace the ride action flows in the app
 
 ### Settings
 - Toggle push notification preferences
@@ -113,15 +114,15 @@ The platform is designed around **trust** — users are admin-approved before th
 
 All AI modules are **assistive only** — they surface suggestions and insights but never auto-join, auto-cancel, or auto-block users.
 
-### 1. LLM Chat Service — `src/services/llmService.js`
+### 1. RAG Chat Service — `api/chat.js`
 
-Multi-provider LLM client with automatic fallback:
+LangChain RAG pipeline with real embeddings and Pinecone vector search:
 
 ```
-Gemini Direct → Groq Direct → /api/chat (serverless proxy) → fallback message
+Knowledge base markdown files → bootstrap script → Pinecone index → ChatGroq or ChatOpenAI
 ```
 
-Configure via environment variables (see [Environment Variables](#environment-variables)).
+The chatbot only queries an existing Pinecone namespace at runtime. Use `npm run rag:bootstrap` to create the index and seed it from the local markdown sources.
 
 ### 2. NLP Agent — `src/services/nlpAgent.js`
 
@@ -188,6 +189,10 @@ Score is persisted on the Firestore user document and read by the recommendation
 
 Orchestrates chat history, context injection (user stats, active rides), and response routing between the NLP intent layer and the LLM service.
 
+### 8. RAG Bootstrap Script — `scripts/bootstrap-rag-index.js`
+
+Creates the Pinecone index if needed, clears the chatbot namespace, and upserts the knowledge-base chunks with stable IDs so reruns stay idempotent.
+
 ---
 
 ## Project Structure
@@ -203,10 +208,14 @@ Final_Year_Project-master/
     ├── vite.config.js
     ├── playwright.config.js          # E2E test config
     ├── vercel.json                   # Frontend-level Vercel config
+    ├── scripts/
+    │   └── bootstrap-rag-index.js    # One-time Pinecone bootstrap command
+    ├── server/
+    │   └── rag.js                    # Shared RAG utilities for API + script
     ├── package.json
     ├── TESTING_REPORT.md             # Full per-test E2E results
     ├── api/
-    │   └── chat.js                   # Vercel serverless LLM proxy
+    │   └── chat.js                   # Vercel serverless RAG chat endpoint
     ├── tests/                        # Playwright E2E test suite
     │   ├── helpers.js                # Shared login/logout/navigation helpers
     │   ├── 01-auth.spec.js           # 8 auth scenarios
@@ -338,22 +347,30 @@ VITE_FIREBASE_STORAGE_BUCKET=your_project.appspot.com
 VITE_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
 VITE_FIREBASE_APP_ID=your_app_id
 
-# ── LLM Configuration (optional) ─────────────────────────────────
-# Primary: Gemini (free tier)
-VITE_GEMINI_API_KEY=your_gemini_api_key
+# ── Chatbot RAG Configuration (required) ────────────────────────
+GROQ_API_KEY=your_groq_api_key
+PINECONE_API_KEY=your_pinecone_api_key
+PINECONE_INDEX_NAME=your_pinecone_index_name
+PINECONE_NAMESPACE=colonycarpool-rag
 
-# Fallback: Groq
-VITE_GROQ_API_KEY=your_groq_api_key
-VITE_GROQ_MODEL=llama3-8b-8192
+# Required only when creating the index with npm run rag:bootstrap
+PINECONE_CLOUD=aws
+PINECONE_REGION=us-east-1
+PINECONE_INDEX_DIMENSION=1024
+PINECONE_INDEX_METRIC=cosine
+PINECONE_EMBED_MODEL=llama-text-embed-v2
+PINECONE_TEXT_FIELD=chunk_text
 
-# Fallback: OpenAI
-VITE_OPENAI_API_KEY=your_openai_api_key
+# Optional chat model override
+GROQ_MODEL=llama-3.1-8b-instant
 
-# Override default model (default: gemini-1.5-flash-latest)
-VITE_LLM_MODEL=gemini-1.5-flash-latest
+# Optional OpenAI fallback only if GROQ_API_KEY is not set
+OPENAI_API_KEY=your_openai_api_key
+OPENAI_CHAT_MODEL=gpt-4o-mini
 ```
 
-The app works without LLM keys — the chatbot falls back to a built-in rule-based response layer. Firebase keys are **required** for the app to function.
+Firebase keys are **required** for the app to function. The chatbot needs the RAG environment variables above so it can bootstrap Pinecone once and query the index at runtime.
+
 
 ---
 
@@ -461,6 +478,8 @@ Push to `main` → Vercel CI/CD rebuilds and deploys automatically.
 
 ```bash
 # From repo root
+
+Run `npm run rag:bootstrap` once after the variables are set to create the Pinecone index and seed the chatbot namespace.
 npx vercel --prod
 ```
 

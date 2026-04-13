@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { collection, onSnapshot, addDoc, query, where, getDocs, doc, setDoc, getDoc, updateDoc, orderBy } from "firebase/firestore";
 import { signOut } from "firebase/auth";
 import { auth, db } from "../firebase.js";
-import { FaUserCircle, FaCog, FaSignOutAlt, FaPlus, FaComments, FaTrophy, FaRobot, FaUser, FaTimes, FaCar, FaMoneyBillWave, FaSun, FaPaperPlane, FaRoute, FaLeaf, FaStar, FaBell, FaHome, FaRoad, FaCalendarAlt, FaUsers, FaQuestionCircle, FaMapMarkerAlt, FaMoon, FaBullseye, FaBolt, FaFire, FaChartLine, FaMedal, FaBars, FaSearch, FaClock } from 'react-icons/fa';
+import { FaUserCircle, FaCog, FaSignOutAlt, FaPlus, FaComments, FaTrophy, FaRobot, FaUser, FaTimes, FaCar, FaMoneyBillWave, FaSun, FaPaperPlane, FaRoute, FaLeaf, FaStar, FaBell, FaHome, FaRoad, FaCalendarAlt, FaUsers, FaQuestionCircle, FaMapMarkerAlt, FaMoon, FaBullseye, FaBolt, FaFire, FaChartLine, FaMedal, FaBars, FaSearch, FaClock, FaShieldAlt } from 'react-icons/fa';
 import logo from "../assets/logo.png";
 import './Dashboard.css';
 import { useNavigate } from 'react-router-dom';
@@ -196,7 +196,12 @@ const Dashboard = () => {
 
         const unsubscribeProfile = onSnapshot(userRef, (doc) => {
           if (doc.exists()) {
-            setUserProfile(doc.data());
+            const profileData = doc.data();
+            setUserProfile(profileData);
+            if (profileData?.role === 'admin' || profileData?.isAdmin === true) {
+              navigate('/admin');
+              return;
+            }
           }
         });
 
@@ -1595,6 +1600,12 @@ const Dashboard = () => {
             <FaCog className="menu-icon" />
             <span className="menu-text">Settings</span>
           </div>
+          {(userProfile?.role === 'admin' || userProfile?.isAdmin === true) && (
+            <div className={`menu-item ${activeMenu === 'admin' ? 'active' : ''}`} onClick={() => navigate('/admin')}>
+              <FaShieldAlt className="menu-icon" />
+              <span className="menu-text">Admin Dashboard</span>
+            </div>
+          )}
           <div className={`menu-item ${activeMenu === 'help' ? 'active' : ''}`} onClick={() => setActiveMenu('help')}>
             <FaQuestionCircle className="menu-icon" />
             <span className="menu-text">Help & Support</span>
